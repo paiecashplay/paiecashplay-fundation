@@ -1,98 +1,19 @@
 // components/DonationPacks.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faIdCard, faTshirt, faAppleAlt, faBus, faGraduationCap, faCheck } from '@fortawesome/free-solid-svg-icons';
 import DonationModal from './DonationModal';
 import CustomDonationModal from './CustomDonationModal';
+import LoadingSpinner from './LoadingSpinner';
 
-const donationPacks = [
-  {
-    id: 'licenseDream',
-    title: 'License Solidaire',
-    price: '50€/mois',
-    description: 'Inscription saison sportive officielle, accès aux installations et coaching support',
-    benefits: [
-      'Nom et photo de l\'enfant',
-      'Mises à jour progrès',
-      'Certificat de parrainage digital',
-    ],
-    icon: faIdCard,
-    iconBg: 'bg-green-100',
-    iconColor: 'text-green-600',
-    buttonText: 'Parrainer maintenant',
-    buttonBg: 'bg-[#4FBA73]',
-    buttonHover: 'hover:bg-[#3da562]',
-  },
-  {
-    id: 'championEquipment',
-    title: 'Champion Equipment',
-    price: '100€/kit',
-    description: 'Kit complet : maillot, short, chaussettes, chaussures, protège-tibias',
-    benefits: [
-      'Photo avec nouvel équipement',
-      'Vidéo de remerciement personnelle',
-      'Mention mur des héros',
-    ],
-    icon: faTshirt,
-    iconBg: 'bg-orange-100',
-    iconColor: 'text-orange-600',
-    buttonText: 'Offrir un kit',
-    buttonBg: 'bg-orange-600',
-    buttonHover: 'hover:bg-orange-700',
-    border: 'border border-orange-300',
-  },
-  {
-    id: 'dailyEnergy',
-    title: 'Daily Energy',
-    price: '10€/mois',
-    description: 'Repas équilibrés et collations énergétiques pour entraînements et matchs',
-    benefits: [
-      'Rapports d\'impact trimestriels',
-      'Mises à jour programme nutrition',
-      'Suivi amélioration santé',
-    ],
-    icon: faAppleAlt,
-    iconBg: 'bg-green-100',
-    iconColor: 'text-green-600',
-    buttonText: 'Nourrir les rêves',
-    buttonBg: 'bg-[#4FBA73]',
-    buttonHover: 'hover:bg-[#3da562]',
-  },
-  {
-    id: 'talentJourney',
-    title: 'Talent Journey',
-    price: '100€/saison',
-    description: 'Transport vers compétitions et tournois hors région locale',
-    benefits: [
-      'Photos de voyage équipe',
-      'Partage résultats compétitions',
-      'Histoires expérience tournoi',
-    ],
-    icon: faBus,
-    iconBg: 'bg-purple-100',
-    iconColor: 'text-purple-600',
-    buttonText: 'Ouvrir la voie',
-    buttonBg: 'bg-[#4FBA73]',
-    buttonHover: 'hover:bg-[#3da562]',
-  },
-  {
-    id: 'tomorrowsTraining',
-    title: 'Tomorrow\'s Training',
-    price: '75€/module',
-    description: 'Ateliers fair-play, gestion émotions et prévention blessures',
-    benefits: [
-      'Certificats de participation',
-      'Témoignages d\'impact formation',
-      'Suivi développement compétences',
-    ],
-    icon: faGraduationCap,
-    iconBg: 'bg-indigo-100',
-    iconColor: 'text-indigo-600',
-    buttonText: 'Investir dans les compétences',
-    buttonBg: 'bg-[#4FBA73]',
-    buttonHover: 'hover:bg-[#3da562]',
-  },
-];
+// Mapping des icônes FontAwesome
+const iconMap = {
+  faIdCard,
+  faTshirt,
+  faAppleAlt,
+  faBus,
+  faGraduationCap
+};
 
 import { forwardRef, useImperativeHandle } from 'react';
 
@@ -102,6 +23,33 @@ const DonationPacks = forwardRef((props, ref) => {
   const [selectedPack, setSelectedPack] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [donationPacks, setDonationPacks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Charger les packs depuis la base de données
+  useEffect(() => {
+    const fetchDonationPacks = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/donations');
+        const result = await response.json();
+        
+        if (result.success) {
+          setDonationPacks(result.data);
+        } else {
+          setError('Erreur lors du chargement des packs');
+        }
+      } catch (err) {
+        setError('Erreur de connexion');
+        console.error('Erreur fetch packs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDonationPacks();
+  }, []);
 
   const handlePackClick = (pack) => {
     setSelectedPack(pack);
@@ -109,7 +57,7 @@ const DonationPacks = forwardRef((props, ref) => {
   };
 
   const openChampionModal = () => {
-    const championPack = donationPacks.find(pack => pack.id === 'championEquipment');
+    const championPack = donationPacks.find(pack => pack.code === 'championEquipment');
     if (championPack) {
       handlePackClick(championPack);
     }
@@ -145,80 +93,113 @@ const DonationPacks = forwardRef((props, ref) => {
           Choisissez comment vous voulez soutenir les enfants africains
         </p>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {donationPacks.map((pack) => (
-            <div
-              key={pack.id}
-              className={`donation-pack p-6 rounded-lg shadow cursor-pointer transition-transform hover:scale-105 ${pack.border ? pack.border : ''}`}
-              onClick={() => handlePackClick(pack)}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" text="Chargement des packs de donation..." />
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-[#4FBA73] text-white px-4 py-2 rounded-lg hover:bg-[#3da562]"
             >
-              <div className="flex items-center mb-4">
-                <div className={`${pack.iconBg} w-12 h-12 rounded-full flex items-center justify-center`}>
-                  <FontAwesomeIcon className={`${pack.iconColor} text-lg`} icon={pack.icon} />
-                </div>
-                <div className="ml-4">
-                  <h4 className="font-bold text-lg">{pack.title}</h4>
-                  <p className={`${pack.iconColor} font-bold`}>{pack.price}</p>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-4">{pack.description}</p>
-              <ul className="text-sm text-gray-600 mb-6 space-y-2">
-                {pack.benefits.map((benefit, i) => (
-                  <li key={i}>
-                    <FontAwesomeIcon className="text-green-500 mr-2" icon={faCheck} />
-                    {benefit}
-                  </li>
-                ))}
-              </ul>
-              <button
-                className={`w-full text-white py-3 rounded-lg font-medium transition ${pack.buttonBg} ${pack.buttonHover}`}
-              >
-                {pack.buttonText}
-              </button>
-            </div>
-          ))}
-
-          {/* Custom Support */}
-          <div className="donation-pack p-6 border border-gray-300 rounded-lg">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#4FBA73] to-[#3da562] rounded-full flex items-center justify-center">
-                <i className="fas fa-heart text-white text-lg"></i>
-              </div>
-              <div className="ml-4">
-                <h4 className="font-bold text-lg">Support Personnalisé</h4>
-                <p className="text-[#4FBA73] font-bold">Montant libre</p>
-              </div>
-            </div>
-            <p className="text-gray-700 mb-4">
-              Choisissez votre propre montant pour soutenir la cause à votre façon
-            </p>
-            <div className="mb-6">
-              <input
-                type="number"
-                min="1"
-                placeholder="Entrez votre montant (€)"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73] outline-none transition-colors"
-              />
-              <select
-                value={customDonationType}
-                onChange={(e) => setCustomDonationType(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73] outline-none transition-colors"
-              >
-                <option>Don unique</option>
-                <option>Don mensuel</option>
-                <option>Don annuel</option>
-              </select>
-            </div>
-            <button
-              onClick={handleCustomDonate}
-              className="w-full bg-[#4FBA73] text-white py-3 rounded-lg font-medium hover:bg-[#3da562] transition-colors"
-            >
-              Faire un don
+              Réessayer
             </button>
           </div>
-        </div>
+        ) : (
+          <div className="grid lg:grid-cols-3 gap-8">
+            {donationPacks.map((pack) => {
+              const icon = iconMap[pack.icone_fa] || faIdCard;
+              const priceDisplay = `${pack.prix}€${pack.type_recurrence === 'mensuel' ? '/mois' : pack.type_recurrence === 'annuel' ? '/an' : pack.type_recurrence === 'saison' ? '/saison' : ''}`;
+              
+              return (
+                <div
+                  key={pack.id}
+                  className="donation-pack p-6 rounded-lg shadow cursor-pointer transition-transform hover:scale-105"
+                  onClick={() => handlePackClick(pack)}
+                  style={{ backgroundColor: pack.couleur_fond }}
+                >
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: pack.couleur_fond }}>
+                      <FontAwesomeIcon className="text-lg" style={{ color: pack.couleur_icone }} icon={icon} />
+                    </div>
+                    <div className="ml-4">
+                      <h4 className="font-bold text-lg">{pack.nom}</h4>
+                      <p className="font-bold" style={{ color: pack.couleur_icone }}>{priceDisplay}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-700 mb-4">{pack.description}</p>
+                  <ul className="text-sm text-gray-600 mb-6 space-y-2">
+                    {(() => {
+                      try {
+                        const benefits = typeof pack.avantages === 'string' 
+                          ? JSON.parse(pack.avantages) 
+                          : pack.avantages || [];
+                        return benefits.map((benefit, i) => (
+                          <li key={i}>
+                            <FontAwesomeIcon className="text-green-500 mr-2" icon={faCheck} />
+                            {benefit}
+                          </li>
+                        ));
+                      } catch (error) {
+                        console.error('Erreur parsing avantages:', error);
+                        return null;
+                      }
+                    })()}
+                  </ul>
+                  <button
+                    className="w-full text-white py-3 rounded-lg font-medium transition hover:opacity-90"
+                    style={{ backgroundColor: pack.couleur_bouton }}
+                  >
+                    Sélectionner ce pack
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Custom Support */}
+            <div className="donation-pack p-6 border border-gray-300 rounded-lg">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#4FBA73] to-[#3da562] rounded-full flex items-center justify-center">
+                  <i className="fas fa-heart text-white text-lg"></i>
+                </div>
+                <div className="ml-4">
+                  <h4 className="font-bold text-lg">Support Personnalisé</h4>
+                  <p className="text-[#4FBA73] font-bold">Montant libre</p>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-4">
+                Choisissez votre propre montant pour soutenir la cause à votre façon
+              </p>
+              <div className="mb-6">
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Entrez votre montant (€)"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73] outline-none transition-colors"
+                />
+                <select
+                  value={customDonationType}
+                  onChange={(e) => setCustomDonationType(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73] outline-none transition-colors"
+                >
+                  <option>Don unique</option>
+                  <option>Don mensuel</option>
+                  <option>Don annuel</option>
+                </select>
+              </div>
+              <button
+                onClick={handleCustomDonate}
+                className="w-full bg-[#4FBA73] text-white py-3 rounded-lg font-medium hover:bg-[#3da562] transition-colors"
+              >
+                Faire un don
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Modals */}

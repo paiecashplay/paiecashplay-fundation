@@ -3,10 +3,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Users, Settings, LogOut, Shield } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuthState } from '@/hooks/useAuth';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { admin, logout } = useAuthState();
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -19,9 +23,11 @@ export default function UserDropdown() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    alert('Déconnexion...');
+  const handleLogout = async () => {
+    await logout();
     setIsOpen(false);
+    router.push('/');
+    router.refresh();
   };
 
   return (
@@ -36,8 +42,8 @@ export default function UserDropdown() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
           <div className="px-4 py-2 border-b border-gray-100">
-            <div className="text-sm font-medium text-gray-900">Admin</div>
-            <div className="text-xs text-gray-500">admin@paiecashplay.com</div>
+            <div className="text-sm font-medium text-gray-900">{admin?.prenom} {admin?.nom}</div>
+            <div className="text-xs text-gray-500">{admin?.email}</div>
           </div>
           
           <Link href="/admin/federations" onClick={() => setIsOpen(false)}>

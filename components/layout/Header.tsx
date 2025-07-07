@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import { FaBell } from 'react-icons/fa';
+import { LogIn } from 'lucide-react';
+import Link from 'next/link';
 import UserDropdown from '@/components/UserDropdown';
+import { useAuthState } from '@/hooks/useAuth';
 
 export function Header() {
   const [lang, setLang] = useState('fr');
+  const { admin, loading } = useAuthState();
 
   return (
     <>
@@ -40,16 +44,30 @@ export function Header() {
               </div>
             </div>
 
-           
-            {/* Notification + Profil */}
+            {/* Authentification */}
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <FaBell className="text-xl cursor-pointer" />
-                <span className="absolute -top-2 -right-2 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  3
-                </span>
-              </div>
-              <UserDropdown />
+              {!loading && (
+                admin ? (
+                  // Menu admin connecté
+                  <>
+                    <div className="relative">
+                      <FaBell className="text-xl cursor-pointer" />
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        3
+                      </span>
+                    </div>
+                    <UserDropdown />
+                  </>
+                ) : (
+                  // Bouton de connexion
+                  <Link href="/login">
+                    <button className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
+                      <LogIn className="w-4 h-4" />
+                      <span>Connexion</span>
+                    </button>
+                  </Link>
+                )
+              )}
             </div>
           </div>
         </div>

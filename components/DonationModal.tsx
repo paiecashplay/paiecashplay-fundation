@@ -8,15 +8,15 @@ import ChildSelectionModal from './ChildSelectionModal';
 
 interface DonationPack {
   id: string;
-  title: string;
-  price: string;
+  nom: string;
+  prix: number;
   description: string;
-  benefits: string[];
-  icon: IconDefinition;
-  iconBg: string;
-  iconColor: string;
-  buttonBg: string;
-  buttonHover: string;
+  avantages: string | string[];
+  icone_fa: string;
+  couleur_fond: string;
+  couleur_icone: string;
+  couleur_bouton: string;
+  type_recurrence: string;
 }
 
 interface DonationModalProps {
@@ -33,7 +33,17 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
   if (!isOpen || !pack) return null;
 
   const handleSelectChild = (child: any) => {
-    setSelectedChild(child);
+    // Mapper les propriétés de la BD vers le format attendu
+    const mappedChild = {
+      id: child.id,
+      name: `${child.prenom} ${child.nom}`,
+      photo: child.photo_emoji,
+      club: child.club_nom,
+      country: child.pays_nom,
+      age: child.age,
+      position: child.position
+    };
+    setSelectedChild(mappedChild);
     setShowChildSelection(false);
   };
 
@@ -49,8 +59,8 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
       const { getStripe } = await import('@/lib/stripe');
       const stripe = await getStripe();
       
-      const amount = parseInt(pack.price.match(/\d+/)?.[0] || '0');
-      const isRecurring = pack.price.includes('/mois') || pack.price.includes('/saison');
+      const amount = pack.prix;
+      const isRecurring = pack.type_recurrence === 'mensuel' || pack.type_recurrence === 'annuel';
       
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -60,7 +70,7 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
         body: JSON.stringify({
           amount,
           donationType: isRecurring ? 'Don mensuel' : 'Don unique',
-          packName: pack.title,
+          packName: pack.nom,
           isRecurring,
           childId: selectedChild.id,
           childName: selectedChild.name
@@ -110,12 +120,14 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           </button>
           
           <div className="flex items-center space-x-4">
-            <div className={`${pack.iconBg} w-16 h-16 rounded-full flex items-center justify-center`}>
-              <FontAwesomeIcon className={`${pack.iconColor} text-2xl`} icon={pack.icon} />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: pack.couleur_fond }}>
+              <i className={`fas ${pack.icone_fa} text-2xl`} style={{ color: pack.couleur_icone }}></i>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{pack.title}</h2>
-              <p className={`${pack.iconColor} text-xl font-bold`}>{pack.price}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{pack.nom}</h2>
+              <p className="text-xl font-bold" style={{ color: pack.couleur_icone }}>
+                {pack.prix}€{pack.type_recurrence === 'mensuel' ? '/mois' : pack.type_recurrence === 'annuel' ? '/an' : ''}
+              </p>
             </div>
           </div>
         </div>
@@ -128,14 +140,24 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Ce que vous recevrez :</h3>
             <ul className="space-y-3">
-              {pack.benefits.map((benefit, index) => (
-                <li key={index} className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
-                    <Check className="w-3 h-3 text-green-600" />
-                  </div>
-                  <span className="text-gray-700 text-sm">{benefit}</span>
-                </li>
-              ))}
+              {(() => {
+                try {
+                  const benefits = typeof pack.avantages === 'string' 
+                    ? JSON.parse(pack.avantages) 
+                    : pack.avantages || [];
+                  return benefits.map((benefit: string, index: number) => (
+                    <li key={index} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mt-0.5">
+                        <Check className="w-3 h-3 text-green-600" />
+                      </div>
+                      <span className="text-gray-700 text-sm">{benefit}</span>
+                    </li>
+                  ));
+                } catch (error) {
+                  console.error('Erreur parsing avantages:', error);
+                  return null;
+                }
+              })()}
             </ul>
           </div>
 
@@ -143,16 +165,20 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           <div className="bg-gray-50 rounded-xl p-4 mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">Pack sélectionné</span>
-              <span className="font-medium">{pack.title}</span>
+              <span className="font-medium">{pack.nom}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">Montant</span>
-              <span className="font-medium">{pack.price}</span>
+              <span className="font-medium">
+                {pack.prix}€{pack.type_recurrence === 'mensuel' ? '/mois' : pack.type_recurrence === 'annuel' ? '/an' : ''}
+              </span>
             </div>
             <div className="border-t border-gray-200 pt-2 mt-2">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-900">Total</span>
-                <span className={`font-bold text-xl ${pack.iconColor}`}>{pack.price}</span>
+                <span className="font-bold text-xl" style={{ color: pack.couleur_icone }}>
+                  {pack.prix}€{pack.type_recurrence === 'mensuel' ? '/mois' : pack.type_recurrence === 'annuel' ? '/an' : ''}
+                </span>
               </div>
             </div>
           </div>
@@ -183,7 +209,8 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           <button
             onClick={handlePayment}
             disabled={isProcessing}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 ${pack.buttonBg} ${pack.buttonHover} disabled:opacity-50 disabled:cursor-not-allowed`}
+            className="w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: pack.couleur_bouton }}
           >
             {isProcessing ? (
               <>
@@ -215,7 +242,7 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           // Ne pas réinitialiser selectedChild ici pour garder la sélection
         }}
         onSelectChild={handleSelectChild}
-        packTitle={pack.title}
+        packTitle={pack.nom}
       />
     </div>
   );

@@ -1,85 +1,85 @@
-import { create } from 'zustand';
-import { api } from '@/lib/api';
-import { User } from '@/types';
+'use client';
 
-interface AuthState {
-  user: User | null;
-  isLoading: boolean;
-  error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
-  logout: () => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+import { useState, useEffect, createContext, useContext } from 'react';
+
+interface Admin {
+  id: string;
+  email: string;
+  nom: string;
+  prenom: string;
+  role: string;
 }
 
-export const useAuth = create<AuthState>((set) => ({
-  user: null,
-  isLoading: false,
-  error: null,
+interface AuthContextType {
+  admin: Admin | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
 
-  login: async (email: string, password: string) => {
-    try {
-      set({ isLoading: true, error: null });
-      const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      
-      set({ user, isLoading: false });
-    } catch (error) {
-      set({ error: 'Erreur de connexion', isLoading: false });
-      throw error;
-    }
-  },
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  loginWithGoogle: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      window.location.href = '/auth/google';
-    } catch (error) {
-      set({ error: 'Erreur de connexion Google', isLoading: false });
-      throw error;
-    }
-  },
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
 
-  loginWithApple: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      window.location.href = '/auth/apple';
-    } catch (error) {
-      set({ error: 'Erreur de connexion Apple', isLoading: false });
-      throw error;
-    }
-  },
+export function useAuthState() {
+  const [admin, setAdmin] = useState<Admin | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  logout: async () => {
+  const checkAuth = async () => {
     try {
-      set({ isLoading: true, error: null });
-      await api.post('/auth/logout');
-      localStorage.removeItem('token');
-      delete api.defaults.headers.common.Authorization;
-      set({ user: null, isLoading: false });
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setAdmin(data.admin);
+      } else {
+        setAdmin(null);
+      }
     } catch (error) {
-      set({ error: 'Erreur de déconnexion', isLoading: false });
-      throw error;
+      setAdmin(null);
+    } finally {
+      setLoading(false);
     }
-  },
+  };
 
-  register: async (email: string, password: string, name: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      set({ isLoading: true, error: null });
-      const response = await api.post('/auth/register', { email, password, name });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      
-      set({ user, isLoading: false });
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAdmin(data.admin);
+        return true;
+      }
+      return false;
     } catch (error) {
-      set({ error: "Erreur d'inscription", isLoading: false });
-      throw error;
+      return false;
     }
-  },
-}));
+  };
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setAdmin(null);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  return { admin, loading, login, logout, checkAuth };
+}
