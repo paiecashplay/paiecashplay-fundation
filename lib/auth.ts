@@ -1,6 +1,7 @@
 import { executeQuery } from './database';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { NextRequest } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'paiecash-secret-key-2024';
 
@@ -72,4 +73,14 @@ export function verifyToken(token: string): { valid: boolean; admin?: any } {
   } catch (error) {
     return { valid: false };
   }
+}
+
+export function verifyAuth(request: NextRequest): { valid: boolean; admin?: any } {
+  const token = request.cookies.get('token')?.value;
+
+  if (!token) {
+    return { valid: false };
+  }
+
+  return verifyToken(token);
 }

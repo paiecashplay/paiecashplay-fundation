@@ -148,6 +148,7 @@ export async function POST(request: Request) {
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
 
 export function middleware(request: NextRequest) {
     const token = request.cookies.get('auth-token');
