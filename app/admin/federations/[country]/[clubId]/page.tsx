@@ -8,24 +8,10 @@ import AddChildModal from '@/components/admin/AddChildModal';
 import ChangeClubModal from '@/components/admin/ChangeClubModal';
 import LicenseModal from '@/components/admin/LicenseModal';
 import AdminNavbar from '@/components/admin/AdminNavbar';
+import type { ClubData, Child } from './types';
 
-const childrenData: Record<string, {
-  clubName: string;
-  city: string;
-  country: string;
-  children: {
-    id: number;
-    name: string;
-    age: number;
-    position: string;
-    hasLicense: boolean;
-    needsDonation: boolean;
-    donationAmount: number;
-    photo: string;
-    joinDate: string;
-    sponsor: string | null;
-  }[];
-}> = {
+
+const childrenData: Record<string, ClubData> = {
   '1': {
     clubName: 'ASC Jaraaf',
     city: 'Dakar',
@@ -79,7 +65,7 @@ export default function ClubChildrenPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showChangeClubModal, setShowChangeClubModal] = useState(false);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
-  const [selectedChild, setSelectedChild] = useState(null);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   
   const clubData = childrenData[clubId as string] || childrenData['1'];
   const [children, setChildren] = useState(clubData.children);
@@ -285,11 +271,15 @@ export default function ClubChildrenPage() {
             setShowChangeClubModal(false);
             setSelectedChild(null);
           }}
-          onTransfer={(newClubId) => handleChangeClub(selectedChild?.id, newClubId)}
+          onTransfer={(newClubId) => {
+            if (selectedChild) {
+              handleChangeClub(selectedChild.id, newClubId);
+            }
+          }}
           childName={selectedChild?.name || ''}
           currentClub={clubData.clubName}
         />
-        
+
         <LicenseModal
           isOpen={showLicenseModal}
           onClose={() => {

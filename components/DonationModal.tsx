@@ -5,6 +5,7 @@ import { X, Check, CreditCard } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import ChildSelectionModal from './ChildSelectionModal';
+import type { Child } from '@/types/child';
 
 interface DonationPack {
   id: string;
@@ -28,7 +29,7 @@ interface DonationModalProps {
 export default function DonationModal({ isOpen, onClose, pack }: DonationModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showChildSelection, setShowChildSelection] = useState(false);
-  const [selectedChild, setSelectedChild] = useState(null);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 
   if (!isOpen || !pack) return null;
 
@@ -41,7 +42,12 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
       club: child.club_nom,
       country: child.pays_nom,
       age: child.age,
-      position: child.position
+      position: child.position,
+      hasLicense: false,
+      needsDonation: false,
+      donationAmount: 0,
+      joinDate: '', // À définir correctement si tu peux
+      sponsor: null
     };
     setSelectedChild(mappedChild);
     setShowChildSelection(false);
@@ -200,7 +206,7 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
                 onClick={() => setShowChildSelection(true)}
                 className="text-[#4FBA73] text-sm mt-2 hover:underline"
               >
-                Changer d'enfant
+                Changer d&apos;enfant
               </button>
             </div>
           )}
