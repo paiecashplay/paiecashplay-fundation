@@ -9,7 +9,23 @@ import ChangeClubModal from '@/components/admin/ChangeClubModal';
 import LicenseModal from '@/components/admin/LicenseModal';
 import AdminNavbar from '@/components/admin/AdminNavbar';
 
-const childrenData = {
+const childrenData: Record<string, {
+  clubName: string;
+  city: string;
+  country: string;
+  children: {
+    id: number;
+    name: string;
+    age: number;
+    position: string;
+    hasLicense: boolean;
+    needsDonation: boolean;
+    donationAmount: number;
+    photo: string;
+    joinDate: string;
+    sponsor: string | null;
+  }[];
+}> = {
   '1': {
     clubName: 'ASC Jaraaf',
     city: 'Dakar',
