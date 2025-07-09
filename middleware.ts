@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAuth } from '@/lib/auth';
+import { verifyAuth } from '@/lib/auth'; // <-- Doit accepter un `string`
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
@@ -21,22 +21,17 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await verifyAuth(token);
+    // On vérifie la validité du token
+    await verifyAuth(token); // ✅ Ici le token est une string
     return NextResponse.next();
   } catch (error) {
+    console.error('Erreur middleware auth :', error);
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
 };

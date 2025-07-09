@@ -8,86 +8,134 @@ import AddClubModal from '@/components/admin/AddClubModal';
 import DeleteClubModal from '@/components/admin/DeleteClubModal';
 import AdminNavbar from '@/components/admin/AdminNavbar';
 
-const clubsData = {
-  'senegal': {
+//Création d'un typage pour éviter les erreurs typescript lors de la compilation
+type Club = {
+  id: number;
+  name: string;
+  city: string;
+  children: number;
+  needsLicense: number;
+  totalDonations: number;
+};
+
+type CountryData = {
+  flag: string;
+  name: string;
+  federation: string;
+  clubs: Club[];
+};
+
+// 👇 Typage dynamique autorisé
+const clubsData: Record<string, CountryData> = {
+  senegal: {
     flag: '🇸🇳',
     name: 'SÉNÉGAL',
     federation: 'FSF',
     clubs: [
-      { 
-        id: 1, 
-        name: 'ASC Jaraaf', 
-        city: 'Dakar', 
-        children: 45,
-        needsLicense: 12,
-        totalDonations: 2400
-      },
-      { 
-        id: 2, 
-        name: 'Casa Sports', 
-        city: 'Ziguinchor', 
-        children: 38,
-        needsLicense: 8,
-        totalDonations: 1900
-      },
-      { 
-        id: 3, 
-        name: 'US Gorée', 
-        city: 'Gorée', 
-        children: 29,
-        needsLicense: 15,
-        totalDonations: 1450
-      }
-    ]
+      { id: 1, name: 'ASC Jaraaf', city: 'Dakar', children: 45, needsLicense: 12, totalDonations: 2400 },
+      { id: 2, name: 'Casa Sports', city: 'Ziguinchor', children: 38, needsLicense: 8, totalDonations: 1900 },
+      { id: 3, name: 'US Gorée', city: 'Gorée', children: 29, needsLicense: 15, totalDonations: 1450 },
+    ],
   },
-  'maroc': {
+  maroc: {
     flag: '🇲🇦',
     name: 'MAROC',
     federation: 'FRMF',
     clubs: [
-      { 
-        id: 1, 
-        name: 'Raja Casablanca', 
-        city: 'Casablanca', 
-        children: 67,
-        needsLicense: 23,
-        totalDonations: 3350
-      },
-      { 
-        id: 2, 
-        name: 'Wydad AC', 
-        city: 'Casablanca', 
-        children: 54,
-        needsLicense: 18,
-        totalDonations: 2700
-      }
-    ]
+      { id: 1, name: 'Raja Casablanca', city: 'Casablanca', children: 67, needsLicense: 23, totalDonations: 3350 },
+      { id: 2, name: 'Wydad AC', city: 'Casablanca', children: 54, needsLicense: 18, totalDonations: 2700 },
+    ],
   },
-  'nigeria': {
-
+  nigeria: {
     flag: '🇳🇬',
     name: 'NIGÉRIA',
     federation: 'NFF',
     clubs: [
-      { 
-        id: 1, 
-        name: 'Kano Pillars', 
-        city: 'Kano', 
-        children: 67,
-        needsLicense: 23,
-        totalDonations: 3350
-      },
-      { 
-        id: 2, 
-        name: 'Enyimba FC', 
-        city: 'Aba', 
-        children: 54,
-        needsLicense: 18,
-        totalDonations: 2700
-      }
-    ]
-  }
+      { id: 1, name: 'Kano Pillars', city: 'Kano', children: 67, needsLicense: 23, totalDonations: 3350 },
+      { id: 2, name: 'Enyimba FC', city: 'Aba', children: 54, needsLicense: 18, totalDonations: 2700 },
+    ],
+  },
 };
+// const clubsData = {
+//   'senegal': {
+//     flag: '🇸🇳',
+//     name: 'SÉNÉGAL',
+//     federation: 'FSF',
+//     clubs: [
+//       { 
+//         id: 1, 
+//         name: 'ASC Jaraaf', 
+//         city: 'Dakar', 
+//         children: 45,
+//         needsLicense: 12,
+//         totalDonations: 2400
+//       },
+//       { 
+//         id: 2, 
+//         name: 'Casa Sports', 
+//         city: 'Ziguinchor', 
+//         children: 38,
+//         needsLicense: 8,
+//         totalDonations: 1900
+//       },
+//       { 
+//         id: 3, 
+//         name: 'US Gorée', 
+//         city: 'Gorée', 
+//         children: 29,
+//         needsLicense: 15,
+//         totalDonations: 1450
+//       }
+//     ]
+//   },
+//   'maroc': {
+//     flag: '🇲🇦',
+//     name: 'MAROC',
+//     federation: 'FRMF',
+//     clubs: [
+//       { 
+//         id: 1, 
+//         name: 'Raja Casablanca', 
+//         city: 'Casablanca', 
+//         children: 67,
+//         needsLicense: 23,
+//         totalDonations: 3350
+//       },
+//       { 
+//         id: 2, 
+//         name: 'Wydad AC', 
+//         city: 'Casablanca', 
+//         children: 54,
+//         needsLicense: 18,
+//         totalDonations: 2700
+//       }
+//     ]
+//   },
+//   'nigeria': {
+
+//     flag: '🇳🇬',
+//     name: 'NIGÉRIA',
+//     federation: 'NFF',
+//     clubs: [
+//       { 
+//         id: 1, 
+//         name: 'Kano Pillars', 
+//         city: 'Kano', 
+//         children: 67,
+//         needsLicense: 23,
+//         totalDonations: 3350
+//       },
+//       { 
+//         id: 2, 
+//         name: 'Enyimba FC', 
+//         city: 'Aba', 
+//         children: 54,
+//         needsLicense: 18,
+//         totalDonations: 2700
+//       }
+//     ]
+//   }
+// };
 
 export default function CountryPage() {
   const params = useParams();
@@ -95,7 +143,8 @@ export default function CountryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddClubModal, setShowAddClubModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedClub, setSelectedClub] = useState(null);
+  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
+
   
   const countryData = clubsData[country] || clubsData['senegal'] || {
     flag: '🇺🇳',
@@ -260,7 +309,11 @@ export default function CountryPage() {
             setShowDeleteModal(false);
             setSelectedClub(null);
           }}
-          onDelete={() => handleDeleteClub(selectedClub?.id)}
+          onDelete={() => {
+            if (selectedClub) {
+              handleDeleteClub(selectedClub.id);
+            }
+          }}
           clubName={selectedClub?.name || ''}
           childrenCount={selectedClub?.children || 0}
         />

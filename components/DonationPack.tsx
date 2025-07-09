@@ -1,13 +1,17 @@
-// components/DonationPacks.jsx
-import { useState, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+// components/DonationPacks.tsx
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faIdCard, faTshirt, faAppleAlt, faBus, faGraduationCap, faCheck } from '@fortawesome/free-solid-svg-icons';
 import DonationModal from './DonationModal';
 import CustomDonationModal from './CustomDonationModal';
 import LoadingSpinner from './LoadingSpinner';
+import type { DonationPack } from '@/types/DonationPack';
 
-// Mapping des icônes FontAwesome
-const iconMap = {
+export interface DonationPacksRef {
+  openChampionModal: () => void;
+}
+
+const iconMap: { [key: string]: any } = {
   faIdCard,
   faTshirt,
   faAppleAlt,
@@ -15,26 +19,23 @@ const iconMap = {
   faGraduationCap
 };
 
-import { forwardRef, useImperativeHandle } from 'react';
-
-const DonationPacks = forwardRef((props, ref) => {
+const DonationPacks = forwardRef<DonationPacksRef, {}>((_, ref) => {
   const [customAmount, setCustomAmount] = useState('');
   const [customDonationType, setCustomDonationType] = useState('Don unique');
-  const [selectedPack, setSelectedPack] = useState(null);
+  const [selectedPack, setSelectedPack] = useState<DonationPack | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
-  const [donationPacks, setDonationPacks] = useState([]);
+  const [donationPacks, setDonationPacks] = useState<DonationPack[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Charger les packs depuis la base de données
   useEffect(() => {
     const fetchDonationPacks = async () => {
       try {
         setLoading(true);
         const response = await fetch('/api/donations');
         const result = await response.json();
-        
+
         if (result.success) {
           setDonationPacks(result.data);
         } else {
@@ -51,7 +52,7 @@ const DonationPacks = forwardRef((props, ref) => {
     fetchDonationPacks();
   }, []);
 
-  const handlePackClick = (pack) => {
+  const handlePackClick = (pack: DonationPack) => {
     setSelectedPack(pack);
     setIsModalOpen(true);
   };
@@ -63,7 +64,6 @@ const DonationPacks = forwardRef((props, ref) => {
     }
   };
 
-  // Exposer la fonction via useImperativeHandle
   useImperativeHandle(ref, () => ({
     openChampionModal
   }));
@@ -100,7 +100,7 @@ const DonationPacks = forwardRef((props, ref) => {
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-[#4FBA73] text-white px-4 py-2 rounded-lg hover:bg-[#3da562]"
             >
@@ -111,8 +111,16 @@ const DonationPacks = forwardRef((props, ref) => {
           <div className="grid lg:grid-cols-3 gap-8">
             {donationPacks.map((pack) => {
               const icon = iconMap[pack.icone_fa] || faIdCard;
-              const priceDisplay = `${pack.prix}€${pack.type_recurrence === 'mensuel' ? '/mois' : pack.type_recurrence === 'annuel' ? '/an' : pack.type_recurrence === 'saison' ? '/saison' : ''}`;
-              
+              const priceDisplay = `${pack.prix}€${
+                pack.type_recurrence === 'mensuel'
+                  ? '/mois'
+                  : pack.type_recurrence === 'annuel'
+                  ? '/an'
+                  : pack.type_recurrence === 'saison'
+                  ? '/saison'
+                  : ''
+              }`;
+
               return (
                 <div
                   key={pack.id}
@@ -121,22 +129,27 @@ const DonationPacks = forwardRef((props, ref) => {
                   style={{ backgroundColor: pack.couleur_fond }}
                 >
                   <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: pack.couleur_fond }}>
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: pack.couleur_fond }}
+                    >
                       <FontAwesomeIcon className="text-lg" style={{ color: pack.couleur_icone }} icon={icon} />
                     </div>
                     <div className="ml-4">
                       <h4 className="font-bold text-lg">{pack.nom}</h4>
-                      <p className="font-bold" style={{ color: pack.couleur_icone }}>{priceDisplay}</p>
+                      <p className="font-bold" style={{ color: pack.couleur_icone }}>
+                        {priceDisplay}
+                      </p>
                     </div>
                   </div>
                   <p className="text-gray-700 mb-4">{pack.description}</p>
                   <ul className="text-sm text-gray-600 mb-6 space-y-2">
                     {(() => {
                       try {
-                        const benefits = typeof pack.avantages === 'string' 
-                          ? JSON.parse(pack.avantages) 
+                        const benefits = typeof pack.avantages === 'string'
+                          ? JSON.parse(pack.avantages)
                           : pack.avantages || [];
-                        return benefits.map((benefit, i) => (
+                        return benefits.map((benefit: string, i: number) => (
                           <li key={i}>
                             <FontAwesomeIcon className="text-green-500 mr-2" icon={faCheck} />
                             {benefit}
@@ -203,12 +216,7 @@ const DonationPacks = forwardRef((props, ref) => {
       </section>
 
       {/* Modals */}
-      <DonationModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        pack={selectedPack}
-      />
-      
+      <DonationModal isOpen={isModalOpen} onClose={handleCloseModal} pack={selectedPack} />
       <CustomDonationModal
         isOpen={isCustomModalOpen}
         onClose={handleCloseCustomModal}

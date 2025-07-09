@@ -1,7 +1,6 @@
 import { executeQuery } from './database';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { NextRequest } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'paiecash-secret-key-2024';
 
@@ -14,7 +13,24 @@ export interface Admin {
   actif: boolean;
 }
 
-export async function authenticateAdmin(email: string, password: string): Promise<{ success: boolean; admin?: Admin; token?: string; error?: string }> {
+export interface DecodedAdminPayload {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+// Authentifier un admin et générer un token
+export async function authenticateAdmin(
+  email: string,
+  password: string
+): Promise<{
+  success: boolean;
+  admin?: Admin;
+  token?: string;
+  error?: string;
+}> {
   try {
     const result = await executeQuery<Admin[]>(
       'SELECT id, email, password_hash, nom, prenom, role, actif FROM admins WHERE email = ? AND actif = TRUE',
@@ -32,18 +48,16 @@ export async function authenticateAdmin(email: string, password: string): Promis
       return { success: false, error: 'Email ou mot de passe incorrect' };
     }
 
-    // Créer le token JWT
     const token = jwt.sign(
-      { 
-        id: admin.id, 
-        email: admin.email, 
-        role: admin.role 
+      {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role
       },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // Mettre à jour la dernière connexion
     await executeQuery(
       'UPDATE admins SET derniere_connexion = NOW() WHERE id = ?',
       [admin.id]
@@ -66,21 +80,25 @@ export async function authenticateAdmin(email: string, password: string): Promis
   }
 }
 
-export function verifyToken(token: string): { valid: boolean; admin?: any } {
+// Vérifie et décode un token
+export function verifyToken(token: string): { valid: boolean; admin?: DecodedAdminPayload } {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as DecodedAdminPayload;
     return { valid: true, admin: decoded };
-  } catch (error) {
+  } catch {
     return { valid: false };
   }
 }
 
-export function verifyAuth(request: NextRequest): { valid: boolean; admin?: any } {
-  const token = request.cookies.get('token')?.value;
-
-  if (!token) {
-    return { valid: false };
-  }
-
-  return verifyToken(token);
+// Pour middleware : vérifie le token et lève une erreur si invalide
+export function verifyAuth(token: string): Promise<DecodedAdminPayload> {
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (err || !decoded) {
+        reject(new Error('Token invalide'));
+      } else {
+        resolve(decoded as DecodedAdminPayload);
+      }
+    });
+  });
 }

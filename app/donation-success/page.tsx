@@ -5,10 +5,17 @@ import { useSearchParams } from 'next/navigation';
 import { Check, Heart, Home, Mail, Download, Trophy, QrCode } from 'lucide-react';
 import Link from 'next/link';
 
+interface SessionData {
+  childName: string;
+  packName: string;
+  licenseNumber: string;
+  donorEmail?: string;
+}
+
 export default function DonationSuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
-  const [sessionData, setSessionData] = useState(null);
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,7 +112,7 @@ Cette licence est valide pour la saison 2024-2025.
               )}
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-[#4FBA73] rounded-full mt-2 flex-shrink-0"></div>
-                <span>Vous recevrez des mises à jour sur l'impact de votre don</span>
+                <span>Vous recevrez des mises à jour sur l&apos;impact de votre don</span>
               </li>
             </ul>
           </div>
@@ -190,7 +197,7 @@ Cette licence est valide pour la saison 2024-2025.
         <Link href="/">
           <button className="w-full bg-[#4FBA73] hover:bg-[#3da562] text-white py-3 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2">
             <Home className="w-5 h-5" />
-            <span>Retour à l'accueil</span>
+            <span>Retour à l&apos;accueil</span>
           </button>
         </Link>
       </div>

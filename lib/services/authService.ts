@@ -140,7 +140,7 @@ export async function changeUserPassword(
     [hashedNewPassword, userId]
   );
 
-  return updateResult.success;
+  return !!updateResult.success;
 }
 
 // Vérifier si un email existe
@@ -150,5 +150,5 @@ export async function emailExists(email: string, table: 'users' | 'admins' = 'us
     [email]
   );
 
-  return result.success && result.data && result.data.length > 0;
+  return !!result.success && Array.isArray(result.data) && result.data.length > 0;
 }

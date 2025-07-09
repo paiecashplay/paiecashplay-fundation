@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react';
+import type { DonationPacksRef } from '@/components/DonationPack';
 import { Header } from '@/components/layout/Header';
 import NotificationBanner from '@/components/NotificationBanner';
 import HeroSection from '../components/HeroSection';
@@ -16,7 +17,7 @@ import Footer from '@/components/layout/Footer';
 
 
 export default function Home() {
-  const donationPacksRef = useRef(null);
+  const donationPacksRef = useRef<DonationPacksRef>(null);
 
   const handleOpenChampionModal = () => {
     if (donationPacksRef.current) {

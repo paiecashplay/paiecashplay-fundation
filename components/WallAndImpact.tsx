@@ -22,8 +22,8 @@ interface TopDonor {
 }
 
 export default function WallAndImpact() {
-  const impactChartRef = useRef(null);
-  const donationChartRef = useRef(null);
+  const impactChartRef = useRef<HTMLCanvasElement | null>(null);
+  const donationChartRef = useRef<HTMLCanvasElement | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topDonors, setTopDonors] = useState<TopDonor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +76,7 @@ export default function WallAndImpact() {
     // Impact Chart
     if (impactChartRef.current) {
       const ctx = impactChartRef.current.getContext('2d');
+      if (!ctx) return;
       new Chart(ctx, {
         type: 'line',
         data: {
@@ -116,6 +117,7 @@ export default function WallAndImpact() {
     // Donation Distribution Chart
     if (donationChartRef.current) {
       const ctx = donationChartRef.current.getContext('2d');
+      if (!ctx) return;
       new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -219,7 +221,7 @@ export default function WallAndImpact() {
 
       {/* Impact Chart */}
       <section className="mb-16">
-        <h3 className="text-3xl font-bold text-center mb-4">Suivi d'Impact Transparent</h3>
+        <h3 className="text-3xl font-bold text-center mb-4">Suivi d&apos;Impact Transparent</h3>
         <p className="text-lg text-gray-600 text-center mb-12">
           Voyez exactement comment vos dons font la différence
         </p>
@@ -227,7 +229,7 @@ export default function WallAndImpact() {
         <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {/* Impact Growth Chart */}
           <div className="bg-white p-6 rounded-xl shadow-lg h-[350px]">
-            <h4 className="text-xl font-bold mb-4">Croissance de l'Impact Mensuel</h4>
+            <h4 className="text-xl font-bold mb-4">Croissance de l&apos;Impact Mensuel</h4>
             <div className="relative h-[calc(100%-2rem)]">
               <canvas ref={impactChartRef} className="w-full h-full" />
             </div>

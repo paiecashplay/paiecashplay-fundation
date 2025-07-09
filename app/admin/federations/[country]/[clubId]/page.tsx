@@ -27,7 +27,9 @@ const childrenData: Record<string, ClubData> = {
         donationAmount: 50,
         photo: '👦🏿',
         joinDate: '2024-01-15',
-        sponsor: null
+        sponsor: null,
+        country: 'SÉNÉGAL',
+        club: 'ASC Jaraaf'
       },
       {
         id: 2,
@@ -39,7 +41,9 @@ const childrenData: Record<string, ClubData> = {
         donationAmount: 0,
         photo: '👧🏿',
         joinDate: '2023-09-20',
-        sponsor: 'Pierre Ferracci'
+        sponsor: 'Pierre Ferracci',
+        country: 'SÉNÉGAL',
+        club: 'ASC Jaraaf'
       },
       {
         id: 3,
@@ -51,7 +55,9 @@ const childrenData: Record<string, ClubData> = {
         donationAmount: 50,
         photo: '👦🏿',
         joinDate: '2024-02-10',
-        sponsor: null
+        sponsor: null,
+        country: 'SÉNÉGAL',
+        club: 'ASC Jaraaf'
       }
     ]
   }

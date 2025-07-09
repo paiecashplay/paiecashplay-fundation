@@ -3,9 +3,7 @@ import Stripe from 'stripe';
 
 export async function GET(request: NextRequest) {
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2024-06-20',
-    });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('session_id');

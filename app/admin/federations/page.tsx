@@ -55,14 +55,18 @@ export default function FederationsPage() {
         setError('Erreur lors du chargement des fédérations');
       }
 
-      if (statsResult.success) {
-        setStats({
-          total_federations: federationsResult.data?.reduce((acc, zone) => acc + zone.federations.length, 0) || 0,
-          total_clubs: statsResult.data.clubs_actifs || 0,
-          total_enfants: statsResult.data.enfants_actifs || 0,
-          total_dons: Math.round(statsResult.data.total_dons || 0)
-        });
-      }
+    if (statsResult.success) {
+      setStats({
+        total_federations: federationsResult.data?.reduce(
+          (acc: number, zone: Zone) => acc + zone.federations.length,
+          0
+        ) || 0,
+        total_clubs: statsResult.data.clubs_actifs || 0,
+        total_enfants: statsResult.data.enfants_actifs || 0,
+        total_dons: Math.round(statsResult.data.total_dons || 0)
+      });
+    }
+
     } catch (err) {
       setError('Erreur de connexion');
       console.error('Erreur fetch federations:', err);

@@ -1,7 +1,7 @@
 // app/layout.tsx
-import './globals.css'; // ton fichier Tailwind global
+import './globals.css';
 import { Inter } from 'next/font/google';
-import Head from 'next/head';
+import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -12,12 +12,24 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={inter.className}>
-      <Head>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      </Head>
-      <body className="bg-gray-50">{children}</body>
+    <html lang="fr">
+      <head>
+        {/* FontAwesome CDN */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"
+        />
+        {/* Chart.js CDN */}
+        <script
+          src="https://cdn.jsdelivr.net/npm/chart.js"
+          defer
+        ></script>
+      </head>
+      <body className={inter.className}>
+        <Suspense fallback={<div>Chargement de la page...</div>}>
+          {children}
+        </Suspense>
+      </body>
     </html>
   );
 }
