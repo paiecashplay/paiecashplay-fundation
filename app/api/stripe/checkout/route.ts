@@ -5,8 +5,8 @@ import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   try {
-console.warn("process.env.STRIPE_SECRET_KEY!", process.env.STRIPE_SECRET_KEY!);
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+console.warn("process.env.STRIPE_API_KEY!", process.env.STRIPE_API_KEY!);
+    const stripe = new Stripe(process.env.STRIPE_API_KEY!);
 
     const { amount, donationType, packName, isRecurring, childId, childName } = await request.json();
 
