@@ -2,12 +2,12 @@ import mysql from 'mysql2/promise';
 
 // Configuration de la base de données
 const dbConfig = {
-  host: process.env.DB_HOST || '91.234.195.113',
-  user: process.env.DB_USER || 'cp2273065p21_paicashplay_donation',
-  password: process.env.DB_PASSWORD || 'paicashplay_donationmdp',
-  database: process.env.DB_NAME || 'cp2273065p21_paiecashplay_donation',
+  host: process.env.DB_HOST || 'q2gen47hi68k1yrb.chr7pe7iynqr.eu-west-1.rds.amazonaws.com',
+  user: process.env.DB_USER || 'egqmgini2mt3f6yr',
+  password: process.env.DB_PASSWORD || 'hksdhy11y2sw1lce',
+  database: process.env.DB_NAME || 'l7qlv4g9lclui5wr',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 3,
   queueLimit: 0,
   charset: 'utf8mb4'
 };

@@ -45,7 +45,20 @@ export async function getActiveDonationPacks(): Promise<PackDonation[]> {
 
   return result.data.map(pack => ({
     ...pack,
-    avantages: pack.avantages ? JSON.parse(pack.avantages) : []
+    avantages: (() => {
+      try {
+        if (typeof pack.avantages === 'string') {
+          return JSON.parse(pack.avantages);
+        } else if (Array.isArray(pack.avantages)) {
+          return pack.avantages;
+        } else {
+          return [];
+        }
+      } catch (error) {
+        console.error('Erreur parsing avantages pour pack', pack.id, ':', error);
+        return [];
+      }
+    })()
   }));
 }
 

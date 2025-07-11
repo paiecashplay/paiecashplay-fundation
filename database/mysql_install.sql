@@ -41,7 +41,7 @@ CREATE TABLE zones_caf (
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 2. PAYS
 CREATE TABLE pays (
@@ -50,11 +50,12 @@ CREATE TABLE pays (
     code_iso VARCHAR(3) UNIQUE NOT NULL,
     flag_emoji VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     langues JSON,
-    zone_caf_id CHAR(36),
+    zone_caf_id CHAR(36) ,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_pays_zone FOREIGN KEY (zone_caf_id) REFERENCES zones_caf(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- 3. FEDERATIONS
 CREATE TABLE federations (
@@ -70,7 +71,7 @@ CREATE TABLE federations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_federations_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. CLUBS
 CREATE TABLE clubs (
@@ -90,7 +91,7 @@ CREATE TABLE clubs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_clubs_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE CASCADE,
     CONSTRAINT fk_clubs_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. TYPES_LICENCES
 CREATE TABLE types_licences (
@@ -108,7 +109,7 @@ CREATE TABLE types_licences (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_prix_positif CHECK (prix >= 0),
     CONSTRAINT chk_duree_positive CHECK (duree_mois > 0)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. PACKS_DONATION
 CREATE TABLE packs_donation (
@@ -129,7 +130,7 @@ CREATE TABLE packs_donation (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_pack_prix_positif CHECK (prix >= 0)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. USERS
 CREATE TABLE users (
@@ -156,7 +157,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_total_dons_positif CHECK (total_dons >= 0),
     CONSTRAINT chk_enfants_parraines_positif CHECK (nombre_enfants_parraines >= 0)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. ENFANTS
 CREATE TABLE enfants (
@@ -182,7 +183,7 @@ CREATE TABLE enfants (
     CONSTRAINT fk_enfants_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE,
     CONSTRAINT fk_enfants_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE CASCADE,
     CONSTRAINT chk_age_valide CHECK (age >= 6 AND age <= 18)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. LICENCES
 CREATE TABLE licences (
@@ -207,7 +208,7 @@ CREATE TABLE licences (
     CONSTRAINT fk_licences_sponsor FOREIGN KEY (sponsor_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_montant_positif CHECK (montant_paye >= 0),
     CONSTRAINT chk_date_expiration CHECK (date_expiration > date_emission)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 10. DONATIONS
 CREATE TABLE donations (
@@ -232,7 +233,7 @@ CREATE TABLE donations (
     CONSTRAINT fk_donations_enfant FOREIGN KEY (enfant_id) REFERENCES enfants(id) ON DELETE SET NULL,
     CONSTRAINT fk_donations_pack FOREIGN KEY (pack_donation_id) REFERENCES packs_donation(id) ON DELETE SET NULL,
     CONSTRAINT chk_montant_don_positif CHECK (montant > 0)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 11. PARRAINAGES
 CREATE TABLE parrainages (
@@ -254,7 +255,7 @@ CREATE TABLE parrainages (
     CONSTRAINT fk_parrainages_pack FOREIGN KEY (pack_donation_id) REFERENCES packs_donation(id) ON DELETE CASCADE,
     CONSTRAINT chk_montant_mensuel_positif CHECK (montant_mensuel > 0),
     CONSTRAINT chk_date_fin_valide CHECK (date_fin IS NULL OR date_fin >= date_debut)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 12. CONTACTS
 CREATE TABLE contacts (
@@ -271,7 +272,7 @@ CREATE TABLE contacts (
     date_traitement TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 13. NEWSLETTERS
 CREATE TABLE newsletters (
@@ -285,7 +286,7 @@ CREATE TABLE newsletters (
     date_desabonnement TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 14. STATISTIQUES_IMPACT
 CREATE TABLE statistiques_impact (
@@ -301,7 +302,7 @@ CREATE TABLE statistiques_impact (
     formations_dispensees INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_date_mesure (date_mesure)
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 15. ADMINS
 CREATE TABLE admins (
@@ -316,7 +317,7 @@ CREATE TABLE admins (
     actif BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- INDEX POUR PERFORMANCE
 CREATE INDEX idx_enfants_club_pays ON enfants(club_id, pays_id);
