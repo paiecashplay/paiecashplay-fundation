@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { executeQuery } from '@/lib/database-cloudsql';
 import bcrypt from 'bcryptjs';
 
 export async function POST() {

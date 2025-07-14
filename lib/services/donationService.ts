@@ -1,4 +1,4 @@
-import { executeQuery, executeInsert, executeTransaction } from '@/lib/database';
+import { executeQuery, executeInsert, executeTransaction } from '@/lib/database-cloudsql';
 
 export interface Donation {
   id: string;

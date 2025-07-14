@@ -1,4 +1,4 @@
-import { executeQuery, executeInsert } from '@/lib/database';
+import { executeQuery, executeInsert } from '@/lib/database-cloudsql';
 
 export interface Enfant {
   id: string;

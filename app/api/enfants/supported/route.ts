@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
+import { executeQuery } from '@/lib/database-cloudsql';
 
 export async function GET() {
   try {

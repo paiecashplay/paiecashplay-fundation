@@ -1,16 +1,38 @@
 import mysql from 'mysql2/promise';
 
-// Configuration de la base de données
+// Configuration pour Google Cloud SQL
 const dbConfig = {
-  host: process.env.DB_HOST || '34.134.180.99',
-  user: process.env.DB_USER || 'donation',
-  password: process.env.DB_PASSWORD || 'donation12344321',
-  database: process.env.DB_NAME || 'bd-donation',
+  // Pour connexion via socket Unix (recommandé en production)
+  socketPath: process.env.DB_SOCKET_PATH,
+  // Pour connexion TCP (développement local)
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  // Configuration SSL pour Cloud SQL
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : false,
+  // Pool de connexions optimisé pour Cloud SQL
   waitForConnections: true,
-  connectionLimit: 3,
+  connectionLimit: 5,
   queueLimit: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  // Options MySQL2 valides
+  keepAliveInitialDelay: 0,
+  enableKeepAlive: true
 };
+
+// Filtrer les informations sensibles pour les logs
+const logConfig = {
+  host: dbConfig.host,
+  socketPath: dbConfig.socketPath,
+  database: dbConfig.database,
+  user: dbConfig.user,
+  ssl: !!dbConfig.ssl
+};
+console.log("Cloud SQL Config ", logConfig);
 
 // Pool de connexions
 const pool = mysql.createPool(dbConfig);
@@ -28,8 +50,10 @@ export async function executeQuery<T = any>(
   query: string, 
   params: any[] = []
 ): Promise<QueryResult<T>> {
+  let connection;
   try {
-    const [rows] = await pool.execute(query, params);
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute(query, params);
     return {
       success: true,
       data: rows as T
@@ -40,6 +64,8 @@ export async function executeQuery<T = any>(
       success: false,
       error: error.message
     };
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -48,8 +74,10 @@ export async function executeInsert(
   query: string, 
   params: any[] = []
 ): Promise<QueryResult> {
+  let connection;
   try {
-    const [result] = await pool.execute(query, params) as any;
+    connection = await pool.getConnection();
+    const [result] = await connection.execute(query, params) as any;
     return {
       success: true,
       insertId: result.insertId,
@@ -61,6 +89,8 @@ export async function executeInsert(
       success: false,
       error: error.message
     };
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -89,12 +119,16 @@ export async function executeTransaction(queries: Array<{query: string, params?:
 
 // Test de connexion
 export async function testConnection(): Promise<boolean> {
+  let connection;
   try {
-    const [rows] = await pool.execute('SELECT 1 as test');
+    connection = await pool.getConnection();
+    const [rows] = await connection.execute('SELECT 1 as test');
     return true;
   } catch (error) {
     console.error('Database connection failed:', error);
     return false;
+  } finally {
+    if (connection) connection.release();
   }
 }
 
