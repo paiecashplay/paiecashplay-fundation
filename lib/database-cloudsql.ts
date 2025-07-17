@@ -11,9 +11,7 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   // Configuration SSL pour Cloud SQL
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : undefined,
+  ssl: undefined,
   // Pool de connexions optimisé pour Cloud SQL
   waitForConnections: true,
   connectionLimit: 5,
