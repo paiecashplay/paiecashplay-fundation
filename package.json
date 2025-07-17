@@ -66,6 +66,7 @@
     "embla-carousel-react": "^8.3.0",
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",
+    "google-auth-library": "^10.1.0",
     "graphql": "^16.8.1",
     "input-otp": "^1.2.4",
     "jsonwebtoken": "^9.0.2",
@@ -102,9 +103,7 @@
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.12"
   },
-
   "engines": {
-  "node": "20.x"
+    "node": "20.x"
   }
-
 }
