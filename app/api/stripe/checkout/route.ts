@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-
-
+import { stripe, isStripeConfigured } from '@/lib/stripe-server';
 
 export async function POST(request: NextRequest) {
   try {
-console.warn("process.env.STRIPE_API_KEY!", process.env.STRIPE_API_KEY!);
-    const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+    // Vérifier que Stripe est configuré
+    if (!isStripeConfigured()) {
+      return NextResponse.json({ error: 'Stripe configuration missing' }, { status: 500 });
+    }
 
     const { amount, donationType, packName, isRecurring, childId, childName } = await request.json();
 

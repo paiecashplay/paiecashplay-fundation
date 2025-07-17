@@ -13,7 +13,7 @@ const dbConfig = {
   // Configuration SSL pour Cloud SQL
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
-  } : false,
+  } : undefined,
   // Pool de connexions optimisé pour Cloud SQL
   waitForConnections: true,
   connectionLimit: 5,
@@ -32,7 +32,7 @@ const logConfig = {
   user: dbConfig.user,
   ssl: !!dbConfig.ssl
 };
-console.log("Cloud SQL Config ", logConfig);
+// console.log("Cloud SQL Config ", logConfig);
 
 // Pool de connexions
 const pool = mysql.createPool(dbConfig);

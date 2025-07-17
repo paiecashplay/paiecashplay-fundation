@@ -26,6 +26,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
 
 # vercel
 .vercel
@@ -34,10 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-#bolt
-.bolt
-
-#env
-.env
+# Google Cloud credentials
+*.json
+service-account-key.json
 key.json
-./key.json

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+import { stripe, isStripeConfigured } from '@/lib/stripe-server';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
+  // Vérifier que Stripe est configuré
+  if (!isStripeConfigured()) {
+    console.error('Stripe n\'est pas configuré correctement');
+    return NextResponse.json({ error: 'Stripe configuration missing' }, { status: 500 });
+  }
+
   const body = await request.text();
   const signature = request.headers.get('stripe-signature')!;
 
