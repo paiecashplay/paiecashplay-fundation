@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery, executeInsert } from '@/lib/database-cloudsql';
+import { executeQuery, executeInsert, QueryResult } from '@/lib/database-cloudsql';
 import { addRoleToUser } from '@/lib/keycloak';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Créer le profil spécifique selon le type
-    let specificProfileResult = { success: true };
+    let specificProfileResult: QueryResult = { success: true };
 
     switch (userType) {
       case 'federation':

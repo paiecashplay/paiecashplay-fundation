@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { executeQuery, executeInsert } from '@/lib/database';
+import { executeQuery, executeInsert } from '@/lib/database-cloudsql';
 
 export interface User {
   id: string;
