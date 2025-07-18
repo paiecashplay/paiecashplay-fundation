@@ -1,69 +1,87 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Users, Settings, LogOut, Shield } from 'lucide-react';
+import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuthState } from '@/hooks/useAuth';
+import { useKeycloakAuth } from '@/hooks/useKeycloakAuth';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { admin, logout } = useAuthState();
-  const router = useRouter();
+  const { user, logout, isAdmin } = useKeycloakAuth();
 
+  // Fermer le dropdown quand on clique ailleurs
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
-    };
+    }
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    setIsOpen(false);
-    router.push('/');
-    router.refresh();
-  };
+  if (!user) return null;
+
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Utilisateur';
+  const initials = fullName
+    .split(' ')
+    .map(name => name[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 bg-[#4FBA73] rounded-full flex items-center justify-center hover:bg-[#3da562] transition-colors"
+        className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors"
       >
-        <Users className="w-4 h-4 text-white" />
+        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-medium">
+          {initials}
+        </div>
+        <span className="hidden md:inline">{fullName}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-2 z-50">
           <div className="px-4 py-2 border-b border-gray-100">
-            <div className="text-sm font-medium text-gray-900">{admin?.prenom} {admin?.nom}</div>
-            <div className="text-xs text-gray-500">{admin?.email}</div>
+            <p className="text-sm font-medium text-gray-900">{fullName}</p>
+            <p className="text-xs text-gray-500">{user.email}</p>
           </div>
-          
-          <Link href="/admin/federations" onClick={() => setIsOpen(false)}>
-            <div className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
-              <Shield className="w-4 h-4 mr-3" />
-              Page d'administration
-            </div>
-          </Link>
-          
-          <div className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
-            <Settings className="w-4 h-4 mr-3" />
-            Profil
-          </div>
-          
-          <div className="border-t border-gray-100 mt-1 pt-1">
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+
+          <div className="py-1">
+            <Link
+              href="/profile"
+              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              onClick={() => setIsOpen(false)}
             >
-              <LogOut className="w-4 h-4 mr-3" />
+              <User className="w-4 h-4 mr-2" />
+              Mon profil
+            </Link>
+
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsOpen(false)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Administration
+              </Link>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 pt-1">
+            <button
+              onClick={() => logout()}
+              className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
               Déconnexion
             </button>
           </div>

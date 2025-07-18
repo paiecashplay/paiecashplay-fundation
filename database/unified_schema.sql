@@ -1,4 +1,4 @@
--- Script d'installation complet MySQL pour PaieCashPlay Fondation
+-- Script d'installation complet MySQL pour PaieCashPlay Fondation avec Keycloak
 -- Compatible avec MySQL 5.7+ et 8.0+
 
 -- Vérification de la version MySQL
@@ -13,6 +13,10 @@ SET AUTOCOMMIT = 0;
 START TRANSACTION;
 
 -- Supprimer les tables existantes si elles existent (ordre inverse des dépendances)
+DROP TABLE IF EXISTS player_profiles;
+DROP TABLE IF EXISTS club_profiles;
+DROP TABLE IF EXISTS federation_profiles;
+DROP TABLE IF EXISTS user_profiles;
 DROP TABLE IF EXISTS parrainages;
 DROP TABLE IF EXISTS donations;
 DROP TABLE IF EXISTS licences;
@@ -30,39 +34,39 @@ DROP TABLE IF EXISTS newsletters;
 DROP TABLE IF EXISTS statistiques_impact;
 
 -- Supprimer les vues si elles existent
+DROP VIEW IF EXISTS v_user_complete_profiles;
 DROP VIEW IF EXISTS v_enfants_complets;
 DROP VIEW IF EXISTS v_dashboard_stats;
 
 -- 1. ZONES_CAF
 CREATE TABLE zones_caf (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     code VARCHAR(20) UNIQUE NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- 2. PAYS
 CREATE TABLE pays (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     code_iso VARCHAR(3) UNIQUE NOT NULL,
     flag_emoji VARCHAR(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
     langues JSON,
-    zone_caf_id CHAR(36) ,
+    zone_caf_id VARCHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_pays_zone FOREIGN KEY (zone_caf_id) REFERENCES zones_caf(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 -- 3. FEDERATIONS
 CREATE TABLE federations (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     nom_complet VARCHAR(200),
-    pays_id CHAR(36) NOT NULL,
+    pays_id VARCHAR(36) NOT NULL,
     site_web VARCHAR(255),
     email VARCHAR(255),
     telephone VARCHAR(50),
@@ -71,16 +75,16 @@ CREATE TABLE federations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_federations_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- 4. CLUBS
 CREATE TABLE clubs (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     ville VARCHAR(100),
     adresse TEXT,
-    federation_id CHAR(36) NOT NULL,
-    pays_id CHAR(36) NOT NULL,
+    federation_id VARCHAR(36) NOT NULL,
+    pays_id VARCHAR(36) NOT NULL,
     email VARCHAR(255),
     telephone VARCHAR(50),
     president VARCHAR(100),
@@ -91,11 +95,11 @@ CREATE TABLE clubs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_clubs_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE CASCADE,
     CONSTRAINT fk_clubs_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- 5. TYPES_LICENCES
 CREATE TABLE types_licences (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
@@ -109,11 +113,11 @@ CREATE TABLE types_licences (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_prix_positif CHECK (prix >= 0),
     CONSTRAINT chk_duree_positive CHECK (duree_mois > 0)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- 6. PACKS_DONATION
 CREATE TABLE packs_donation (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
@@ -130,38 +134,92 @@ CREATE TABLE packs_donation (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_pack_prix_positif CHECK (prix >= 0)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
--- 7. USERS
-CREATE TABLE users (
-    id CHAR(36) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    nom VARCHAR(100),
-    prenom VARCHAR(100),
-    telephone VARCHAR(50),
-    pays VARCHAR(100),
-    ville VARCHAR(100),
-    adresse TEXT,
-    date_naissance DATE,
-    sexe ENUM('M', 'F', 'Autre'),
-    profession VARCHAR(100),
-    photo_url VARCHAR(500),
-    niveau_donateur ENUM('Bronze', 'Argent', 'Or', 'Platine', 'Diamant') DEFAULT 'Bronze',
-    total_dons DECIMAL(12,2) DEFAULT 0.00,
-    nombre_enfants_parraines INT DEFAULT 0,
-    date_premier_don TIMESTAMP NULL,
-    statut ENUM('actif', 'inactif', 'suspendu') DEFAULT 'actif',
-    preferences_communication JSON,
+-- 7. PROFILS UTILISATEURS KEYCLOAK
+CREATE TABLE user_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    keycloak_id VARCHAR(255) UNIQUE NOT NULL, -- ID utilisateur Keycloak
+    user_type ENUM('normal', 'federation', 'club', 'player') NOT NULL,
+    phone VARCHAR(50),
+    address TEXT,
+    bio TEXT,
+    avatar_url VARCHAR(500),
+    preferences JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT chk_total_dons_positif CHECK (total_dons >= 0),
-    CONSTRAINT chk_enfants_parraines_positif CHECK (nombre_enfants_parraines >= 0)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_keycloak_id (keycloak_id),
+    INDEX idx_user_type (user_type)
+);
 
--- 8. ENFANTS
+-- 8. PROFILS FÉDÉRATION
+CREATE TABLE federation_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    user_profile_id VARCHAR(36) NOT NULL,
+    federation_code VARCHAR(20),
+    president_name VARCHAR(100),
+    website VARCHAR(255),
+    official_email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    logo_url VARCHAR(500),
+    description TEXT,
+    social_links JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_federation_profile FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_federation_code (federation_code)
+);
+
+-- 9. PROFILS CLUB
+CREATE TABLE club_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    user_profile_id VARCHAR(36) NOT NULL,
+    club_code VARCHAR(20),
+    president_name VARCHAR(100),
+    coach_name VARCHAR(100),
+    founded_year YEAR,
+    website VARCHAR(255),
+    official_email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    logo_url VARCHAR(500),
+    description TEXT,
+    social_links JSON,
+    federation_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_club_profile FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_club_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_club_code (club_code)
+);
+
+-- 10. PROFILS JOUEUR
+CREATE TABLE player_profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    user_profile_id VARCHAR(36) NOT NULL,
+    player_number VARCHAR(10),
+    position VARCHAR(50),
+    height INT, -- en cm
+    weight INT, -- en kg
+    preferred_foot ENUM('left', 'right', 'both'),
+    date_of_birth DATE,
+    place_of_birth VARCHAR(100),
+    nationality VARCHAR(100),
+    club_id VARCHAR(36),
+    parent_contact VARCHAR(255),
+    emergency_contact VARCHAR(255),
+    medical_info TEXT,
+    achievements TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_player_profile FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_player_club FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE SET NULL
+);
+
+-- 11. ENFANTS
 CREATE TABLE enfants (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     age INT NOT NULL,
@@ -170,9 +228,9 @@ CREATE TABLE enfants (
     position VARCHAR(50),
     photo_emoji VARCHAR(10),
     photo_url VARCHAR(500),
-    club_id CHAR(36) NOT NULL,
-    pays_id CHAR(36) NOT NULL,
-    federation_id CHAR(36) NOT NULL,
+    club_id VARCHAR(36) NOT NULL,
+    pays_id VARCHAR(36) NOT NULL,
+    federation_id VARCHAR(36) NOT NULL,
     has_license BOOLEAN DEFAULT FALSE,
     statut ENUM('actif', 'inactif', 'diplome') DEFAULT 'actif',
     biographie TEXT,
@@ -183,20 +241,20 @@ CREATE TABLE enfants (
     CONSTRAINT fk_enfants_pays FOREIGN KEY (pays_id) REFERENCES pays(id) ON DELETE CASCADE,
     CONSTRAINT fk_enfants_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE CASCADE,
     CONSTRAINT chk_age_valide CHECK (age >= 6 AND age <= 18)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
--- 9. LICENCES
+-- 12. LICENCES
 CREATE TABLE licences (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     numero_licence VARCHAR(50) UNIQUE NOT NULL,
-    enfant_id CHAR(36) NOT NULL,
-    type_licence_id CHAR(36) NOT NULL,
-    club_id CHAR(36) NOT NULL,
-    federation_id CHAR(36) NOT NULL,
+    enfant_id VARCHAR(36) NOT NULL,
+    type_licence_id VARCHAR(36) NOT NULL,
+    club_id VARCHAR(36) NOT NULL,
+    federation_id VARCHAR(36) NOT NULL,
     date_emission DATE NOT NULL,
     date_expiration DATE NOT NULL,
     statut ENUM('active', 'expiree', 'suspendue', 'annulee') DEFAULT 'active',
-    sponsor_id CHAR(36),
+    keycloak_id VARCHAR(255),
     montant_paye DECIMAL(10,2) NOT NULL,
     devise VARCHAR(3) DEFAULT 'EUR',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -205,17 +263,17 @@ CREATE TABLE licences (
     CONSTRAINT fk_licences_type FOREIGN KEY (type_licence_id) REFERENCES types_licences(id) ON DELETE CASCADE,
     CONSTRAINT fk_licences_club FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE,
     CONSTRAINT fk_licences_federation FOREIGN KEY (federation_id) REFERENCES federations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_licences_sponsor FOREIGN KEY (sponsor_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT chk_montant_positif CHECK (montant_paye >= 0),
-    CONSTRAINT chk_date_expiration CHECK (date_expiration > date_emission)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CONSTRAINT chk_date_expiration CHECK (date_expiration > date_emission),
+    INDEX idx_keycloak_licences (keycloak_id)
+);
 
--- 10. DONATIONS
+-- 13. DONATIONS
 CREATE TABLE donations (
-    id CHAR(36) PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
-    enfant_id CHAR(36),
-    pack_donation_id CHAR(36),
+    id VARCHAR(36) PRIMARY KEY,
+    keycloak_id VARCHAR(255),
+    enfant_id VARCHAR(36),
+    pack_donation_id VARCHAR(36),
     montant DECIMAL(10,2) NOT NULL,
     devise VARCHAR(3) DEFAULT 'EUR',
     type_don ENUM('unique', 'mensuel', 'annuel') DEFAULT 'unique',
@@ -229,18 +287,18 @@ CREATE TABLE donations (
     recu_fiscal_envoye BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_donations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_donations_enfant FOREIGN KEY (enfant_id) REFERENCES enfants(id) ON DELETE SET NULL,
     CONSTRAINT fk_donations_pack FOREIGN KEY (pack_donation_id) REFERENCES packs_donation(id) ON DELETE SET NULL,
-    CONSTRAINT chk_montant_don_positif CHECK (montant > 0)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CONSTRAINT chk_montant_don_positif CHECK (montant > 0),
+    INDEX idx_keycloak_donations (keycloak_id)
+);
 
--- 11. PARRAINAGES
+-- 14. PARRAINAGES
 CREATE TABLE parrainages (
-    id CHAR(36) PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
-    enfant_id CHAR(36) NOT NULL,
-    pack_donation_id CHAR(36) NOT NULL,
+    id VARCHAR(36) PRIMARY KEY,
+    keycloak_id VARCHAR(255),
+    enfant_id VARCHAR(36) NOT NULL,
+    pack_donation_id VARCHAR(36) NOT NULL,
     date_debut DATE NOT NULL,
     date_fin DATE,
     statut ENUM('actif', 'suspendu', 'termine', 'annule') DEFAULT 'actif',
@@ -250,16 +308,31 @@ CREATE TABLE parrainages (
     preferences_communication JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_parrainages_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_parrainages_enfant FOREIGN KEY (enfant_id) REFERENCES enfants(id) ON DELETE CASCADE,
     CONSTRAINT fk_parrainages_pack FOREIGN KEY (pack_donation_id) REFERENCES packs_donation(id) ON DELETE CASCADE,
     CONSTRAINT chk_montant_mensuel_positif CHECK (montant_mensuel > 0),
-    CONSTRAINT chk_date_fin_valide CHECK (date_fin IS NULL OR date_fin >= date_debut)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    CONSTRAINT chk_date_fin_valide CHECK (date_fin IS NULL OR date_fin >= date_debut),
+    INDEX idx_keycloak_parrainages (keycloak_id)
+);
 
--- 12. CONTACTS
+-- 15. ADMINS (pour compatibilité)
+CREATE TABLE admins (
+    id VARCHAR(36) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    role ENUM('super_admin', 'admin', 'moderateur', 'lecteur') DEFAULT 'lecteur',
+    permissions JSON,
+    derniere_connexion TIMESTAMP NULL,
+    actif BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 16. CONTACTS
 CREATE TABLE contacts (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL,
     telephone VARCHAR(50),
@@ -268,15 +341,15 @@ CREATE TABLE contacts (
     message TEXT NOT NULL,
     statut ENUM('nouveau', 'en_cours', 'traite', 'ferme') DEFAULT 'nouveau',
     reponse TEXT,
-    traite_par CHAR(36),
+    traite_par VARCHAR(255),
     date_traitement TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
--- 13. NEWSLETTERS
+-- 17. NEWSLETTERS
 CREATE TABLE newsletters (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     nom VARCHAR(100),
     statut ENUM('actif', 'desabonne', 'bounce') DEFAULT 'actif',
@@ -286,11 +359,11 @@ CREATE TABLE newsletters (
     date_desabonnement TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
--- 14. STATISTIQUES_IMPACT
+-- 18. STATISTIQUES_IMPACT
 CREATE TABLE statistiques_impact (
-    id CHAR(36) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     date_mesure DATE NOT NULL,
     enfants_soutenus INT DEFAULT 0,
     clubs_affilies INT DEFAULT 0,
@@ -302,36 +375,34 @@ CREATE TABLE statistiques_impact (
     formations_dispensees INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_date_mesure (date_mesure)
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 15. ADMINS
-CREATE TABLE admins (
-    id CHAR(36) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    nom VARCHAR(100) NOT NULL,
-    prenom VARCHAR(100) NOT NULL,
-    role ENUM('super_admin', 'admin', 'moderateur', 'lecteur') DEFAULT 'lecteur',
-    permissions JSON,
-    derniere_connexion TIMESTAMP NULL,
-    actif BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- INDEX POUR PERFORMANCE
-CREATE INDEX idx_enfants_club_pays ON enfants(club_id, pays_id);
-CREATE INDEX idx_donations_user_date ON donations(user_id, created_at);
-CREATE INDEX idx_licences_numero ON licences(numero_licence);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_donations_statut ON donations(statut);
-CREATE INDEX idx_parrainages_actifs ON parrainages(statut);
-CREATE INDEX idx_enfants_nom ON enfants(nom, prenom);
-CREATE INDEX idx_clubs_nom ON clubs(nom);
-CREATE INDEX idx_pays_zone ON pays(zone_caf_id);
-CREATE INDEX idx_federations_pays ON federations(pays_id);
+);
 
 -- VUES
+CREATE VIEW v_user_complete_profiles AS
+SELECT 
+    up.id,
+    up.keycloak_id,
+    up.user_type,
+    up.phone,
+    up.address,
+    up.bio,
+    up.avatar_url,
+    up.preferences,
+    fp.federation_code,
+    fp.president_name as federation_president,
+    cp.club_code,
+    cp.president_name as club_president,
+    cp.coach_name,
+    pp.player_number,
+    pp.position,
+    pp.date_of_birth,
+    up.created_at,
+    up.updated_at
+FROM user_profiles up
+LEFT JOIN federation_profiles fp ON up.id = fp.user_profile_id
+LEFT JOIN club_profiles cp ON up.id = cp.user_profile_id  
+LEFT JOIN player_profiles pp ON up.id = pp.user_profile_id;
+
 CREATE VIEW v_enfants_complets AS
 SELECT 
     e.*,
@@ -353,18 +424,14 @@ CREATE VIEW v_dashboard_stats AS
 SELECT 
     (SELECT COUNT(*) FROM enfants WHERE statut = 'actif') as enfants_actifs,
     (SELECT COUNT(*) FROM clubs WHERE statut = 'actif') as clubs_actifs,
-    (SELECT COUNT(*) FROM users WHERE statut = 'actif') as donateurs_actifs,
+    (SELECT COUNT(*) FROM user_profiles) as donateurs_actifs,
     (SELECT COALESCE(SUM(montant), 0) FROM donations WHERE statut = 'complete') as total_dons,
     (SELECT COUNT(*) FROM licences WHERE statut = 'active') as licences_actives,
     (SELECT COUNT(*) FROM parrainages WHERE statut = 'actif') as parrainages_actifs;
-
--- Validation de la création des tables
-SELECT 'Tables créées avec succès' as status;
-SELECT COUNT(*) as nombre_tables FROM information_schema.tables WHERE table_schema = DATABASE();
 
 -- Commit de la transaction
 COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
 SET AUTOCOMMIT = 1;
 
-SELECT 'Installation du schéma terminée avec succès!' as message;
+SELECT 'Installation du schéma complet terminée avec succès!' as message;
