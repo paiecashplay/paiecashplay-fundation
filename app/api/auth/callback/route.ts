@@ -52,8 +52,33 @@ export async function GET(request: NextRequest) {
 
       const tokenData = await tokenResponse.json();
       
-      // Créer une réponse avec redirection
-      const response = NextResponse.redirect(new URL('/auth/setup', origin));
+      // Vérifier si l'utilisateur a déjà un profil
+      const userInfoEndpoint = `${process.env.KEYCLOAK_BASE_URL || 'https://auth.paiecashplay.com'}/realms/${process.env.KEYCLOAK_REALM || 'PaiecashPlay'}/protocol/openid-connect/userinfo`;
+      const userInfoResponse = await fetch(userInfoEndpoint, {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`
+        }
+      });
+      
+      if (!userInfoResponse.ok) {
+        return NextResponse.redirect(new URL('/auth?error=userinfo_failed', origin));
+      }
+      
+      const userInfo = await userInfoResponse.json();
+      const keycloakId = userInfo.sub;
+      
+      // Vérifier si l'utilisateur existe déjà dans la base de données
+      const checkUserResponse = await fetch(`${origin}/api/auth/check-user?keycloakId=${keycloakId}`, {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`
+        }
+      });
+      
+      const checkUserData = await checkUserResponse.json();
+      
+      // Déterminer la redirection en fonction de l'existence du profil
+      const redirectUrl = checkUserData.exists ? '/' : '/auth/setup';
+      const response = NextResponse.redirect(new URL(redirectUrl, origin));
       
       // Stocker les tokens dans des cookies sécurisés
       response.cookies.set('access_token', tokenData.access_token, {

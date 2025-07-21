@@ -74,8 +74,27 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Récupérer les rôles depuis Keycloak (simulé)
-    const roles = ['user']; // Dans un environnement réel, récupérez les rôles depuis Keycloak
+    // Récupérer les rôles depuis les informations utilisateur Keycloak
+    // Si l'utilisateur n'existe pas encore dans la base de données, créer un profil de base
+    let roles = ['user']; // Rôle par défaut
+    
+    // Si l'utilisateur a un type de profil spécifique, ajouter le rôle correspondant
+    if (userData.user_type) {
+      switch (userData.user_type) {
+        case 'federation':
+          roles.push('federation');
+          break;
+        case 'club':
+          roles.push('club');
+          break;
+        case 'player':
+          roles.push('player');
+          break;
+        case 'admin':
+          roles.push('admin');
+          break;
+      }
+    }
     
     const userData = (result.data as any[])[0];
     

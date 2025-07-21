@@ -27,7 +27,7 @@ export default function NormalAccountSetup() {
       });
 
       if (response.ok) {
-        window.location.href = '/dashboard';
+        window.location.href = '/';
       } else {
         alert('Une erreur est survenue. Veuillez réessayer.');
       }
@@ -107,7 +107,7 @@ export default function NormalAccountSetup() {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => window.location.href = '/dashboard'}
+                onClick={() => window.location.href = '/'}
                 className="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50"
               >
                 Passer
