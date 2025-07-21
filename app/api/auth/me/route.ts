@@ -3,11 +3,44 @@ import { executeQuery } from '@/lib/database-cloudsql';
 
 export async function GET(request: NextRequest) {
   try {
-    // Dans un environnement réel, vous récupéreriez l'ID Keycloak depuis le token
-    // Pour l'exemple, nous simulons qu'aucun utilisateur n'est connecté
+    // Récupérer le token d'accès depuis le cookie
+    const accessToken = request.cookies.get('access_token')?.value;
     
-    // Simuler qu'aucun utilisateur n'est connecté par défaut
-    const keycloakId = null;
+    if (!accessToken) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Non authentifié' 
+      }, { status: 401 });
+    }
+    
+    // Récupérer les informations utilisateur depuis Keycloak
+    const userInfoEndpoint = `${process.env.KEYCLOAK_BASE_URL || 'https://auth.paiecashplay.com'}/realms/${process.env.KEYCLOAK_REALM || 'PaiecashPlay'}/protocol/openid-connect/userinfo`;
+    
+    let keycloakId = null;
+    
+    try {
+      const userInfoResponse = await fetch(userInfoEndpoint, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      
+      if (!userInfoResponse.ok) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Token invalide' 
+        }, { status: 401 });
+      }
+      
+      const userInfo = await userInfoResponse.json();
+      keycloakId = userInfo.sub; // L'ID unique de l'utilisateur dans Keycloak
+    } catch (error) {
+      console.error('Erreur récupération userinfo:', error);
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Erreur récupération profil' 
+      }, { status: 500 });
+    }
     
     // Si aucun utilisateur n'est connecté, retourner directement une réponse 401
     if (!keycloakId) {

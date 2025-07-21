@@ -3,11 +3,17 @@ import { keycloakUrls } from '@/lib/keycloak';
 
 export async function POST(request: NextRequest) {
   try {
-    // Redirection vers la page de déconnexion Keycloak
-    return NextResponse.json({ 
+    // Créer une réponse
+    const response = NextResponse.json({ 
       success: true,
       redirectUrl: keycloakUrls.logout
     });
+
+    // Supprimer les cookies d'authentification
+    response.cookies.delete('access_token');
+    response.cookies.delete('refresh_token');
+
+    return response;
   } catch (error) {
     console.error('Erreur de déconnexion:', error);
     return NextResponse.json(

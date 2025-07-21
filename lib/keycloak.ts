@@ -6,7 +6,7 @@ const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'PaiecashPlay';
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || 'paiecashplay-fundation';
 
 // URL de redirection après authentification
-const REDIRECT_URI = process.env.NEXTAUTH_URL || 'https://fundation.paiecashplay.com';
+const REDIRECT_URI = process.env.URL_HOTE || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 // URLs pour l'authentification
 export const keycloakUrls = {

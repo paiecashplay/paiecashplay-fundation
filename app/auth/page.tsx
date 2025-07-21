@@ -1,12 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPlus, LogIn, Shield } from 'lucide-react';
 import { keycloakUrls } from '@/lib/keycloak';
 import Image from 'next/image';
 
 export default function AuthPage() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Récupérer les paramètres d'URL pour les erreurs
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorParam = searchParams.get('error');
+    const detailsParam = searchParams.get('details');
+    
+    if (errorParam) {
+      let errorMessage = 'Une erreur est survenue lors de l\'authentification.';
+      
+      switch (errorParam) {
+        case 'token_exchange_failed':
+          errorMessage = 'Impossible d\'obtenir un token d\'authentification.';
+          break;
+        case 'server_error':
+          errorMessage = 'Erreur serveur lors de l\'authentification.';
+          break;
+      }
+      
+      if (detailsParam) {
+        console.error('Détails de l\'erreur:', detailsParam);
+      }
+      
+      setError(errorMessage);
+    }
+  }, []);
 
   const handleRegister = () => {
     setLoading('register');
@@ -82,6 +109,16 @@ export default function AuthPage() {
           </p>
         </div>
 
+        {/* Message d'erreur */}
+        {error && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-xs text-red-500 mt-1">
+              Vérifiez la configuration de Keycloak ou contactez l'administrateur.
+            </p>
+          </div>
+        )}
+        
         {/* Types de comptes */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 mb-2">Types de comptes disponibles :</p>

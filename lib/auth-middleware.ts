@@ -4,12 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function requireAuth(request: NextRequest) {
   // Dans un environnement réel, vous vérifieriez le token JWT
   // Pour l'exemple, nous simulons un utilisateur connecté
+
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+
+  const origin = `${forwardedProto}://${forwardedHost}`;
   
   // Simuler un utilisateur connecté pour l'exemple
   const isAuthenticated = true;
   
   if (!isAuthenticated) {
-    return NextResponse.redirect(new URL('/auth', request.url));
+    return NextResponse.redirect(new URL('/auth', origin));
   }
   
   return NextResponse.next();
@@ -30,7 +35,7 @@ export async function requireRole(request: NextRequest, role: string) {
   const hasRole = role === 'admin';
   
   if (!hasRole) {
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
+    return NextResponse.redirect(new URL('/unauthorized', origin));
   }
   
   return NextResponse.next();

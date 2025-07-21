@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery, executeInsert, QueryResult } from '@/lib/database-cloudsql';
-import { addRoleToUser } from '@/lib/keycloak';
+import { addRoleToUser } from '@/lib/keycloak-admin';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
@@ -8,10 +8,45 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userType, keycloakId, ...profileData } = body;
 
-    // Récupérer l'ID Keycloak depuis le token
-    // Dans un environnement réel, vous récupéreriez cela depuis le token d'authentification
-    // Pour l'exemple, nous utilisons un ID fictif ou celui fourni
-    const userId = keycloakId || 'keycloak-user-' + Math.random().toString(36).substring(2, 9);
+    // Récupérer le token d'accès depuis le cookie
+    const accessToken = request.cookies.get('access_token')?.value;
+    
+    if (!accessToken && !keycloakId) {
+      return NextResponse.json({ 
+        error: 'Non authentifié' 
+      }, { status: 401 });
+    }
+    
+    // Récupérer l'ID Keycloak depuis le token ou utiliser celui fourni
+    let userId = keycloakId;
+    
+    if (accessToken && !userId) {
+      try {
+        const userInfoEndpoint = `${process.env.KEYCLOAK_BASE_URL || 'https://auth.paiecashplay.com'}/realms/${process.env.KEYCLOAK_REALM || 'PaiecashPlay'}/protocol/openid-connect/userinfo`;
+        const userInfoResponse = await fetch(userInfoEndpoint, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        
+        if (userInfoResponse.ok) {
+          const userInfo = await userInfoResponse.json();
+          userId = userInfo.sub;
+        }
+      } catch (error) {
+        console.error('Erreur récupération userinfo:', error);
+      }
+    }
+    
+    // Si toujours pas d'ID, générer un ID fictif (uniquement pour le développement)
+    if (!userId) {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ 
+          error: 'Impossible d\'identifier l\'utilisateur' 
+        }, { status: 401 });
+      }
+      userId = 'dev-user-' + Math.random().toString(36).substring(2, 9);
+    }
 
     if (!userType) {
       return NextResponse.json({ error: 'Type de compte requis' }, { status: 400 });
@@ -118,12 +153,16 @@ export async function POST(request: NextRequest) {
       player: 'player'
     };
 
-    // Dans un environnement réel, cette partie serait active
-    // Pour l'exemple, nous simulons la réussite
-    let roleAdded = true;
+    // Ajouter le rôle à l'utilisateur dans Keycloak
+    let roleAdded = false;
     
-    // Décommenter pour utiliser l'API Keycloak réelle
-    // const roleAdded = await addRoleToUser(userId, roleMap[userType as keyof typeof roleMap]);
+    try {
+      roleAdded = await addRoleToUser(userId, roleMap[userType as keyof typeof roleMap]);
+    } catch (error) {
+      console.error('Erreur ajout rôle:', error);
+      // Continuer même si l'ajout du rôle échoue
+      roleAdded = false;
+    }
     
     if (!roleAdded) {
       console.warn('Erreur ajout rôle Keycloak, mais profil créé');
