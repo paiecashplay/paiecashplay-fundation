@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model PackDonation {
+  id               String    @id @default(cuid())
+  nom              String    @db.VarChar(100)
+  code             String    @unique @db.VarChar(50)
+  description      String?   @db.Text
+  prix             Decimal   @db.Decimal(10, 2)
+  devise           String    @default("EUR") @db.VarChar(3)
+  type_recurrence  String    @default("unique") @db.VarChar(20)
+  icone_fa         String?   @db.VarChar(50)
+  couleur_icone    String?   @db.VarChar(7)
+  couleur_fond     String?   @db.VarChar(7)
+  couleur_bouton   String?   @db.VarChar(7)
+  avantages        Json?
+  actif            Boolean   @default(true)
+  ordre_affichage  Int       @default(0)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  licences         Licence[]
+
+  @@map("packs_donation")
+}
+
+model Licence {
+  id                String      @id @default(cuid())
+  numero_licence    String      @unique
+  joueur_oauth_id   String
+  club_oauth_id     String
+  pack_donation_id  String
+  date_emission     DateTime    @default(now())
+  date_expiration   DateTime
+  statut            String      @default("active") @db.VarChar(20)
+  montant_paye      Decimal     @db.Decimal(10, 2)
+  devise            String      @default("EUR") @db.VarChar(3)
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  
+  pack              PackDonation @relation(fields: [pack_donation_id], references: [id])
+
+  @@map("licences")
+}
