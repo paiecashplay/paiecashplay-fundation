@@ -2,10 +2,6 @@
 
 import { useState } from 'react';
 import { X, Check, CreditCard } from 'lucide-react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import ChildSelectionModal from './ChildSelectionModal';
-import type { Child } from '@/types/child';
 
 interface DonationPack {
   id: string;
@@ -28,37 +24,10 @@ interface DonationModalProps {
 
 export default function DonationModal({ isOpen, onClose, pack }: DonationModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showChildSelection, setShowChildSelection] = useState(false);
-  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 
   if (!isOpen || !pack) return null;
 
-  const handleSelectChild = (child: any) => {
-    // Mapper les propriétés de la BD vers le format attendu
-    const mappedChild = {
-      id: child.id,
-      name: `${child.prenom} ${child.nom}`,
-      photo: child.photo_emoji,
-      club: child.club_nom,
-      country: child.pays_nom,
-      age: child.age,
-      position: child.position,
-      hasLicense: false,
-      needsDonation: false,
-      donationAmount: 0,
-      joinDate: '', // À définir correctement si tu peux
-      sponsor: null
-    };
-    setSelectedChild(mappedChild);
-    setShowChildSelection(false);
-  };
-
   const handlePayment = async () => {
-    if (!selectedChild) {
-      setShowChildSelection(true);
-      return;
-    }
-
     setIsProcessing(true);
     
     try {
@@ -75,11 +44,9 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
         },
         body: JSON.stringify({
           amount,
-          donationType: isRecurring ? 'Don mensuel' : 'Don unique',
+          donationType: isRecurring ? `Don ${pack.type_recurrence}` : 'Don unique',
           packName: pack.nom,
-          isRecurring,
-          childId: selectedChild.id,
-          childName: selectedChild.name
+          isRecurring
         }),
       });
       
@@ -99,27 +66,12 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          setSelectedChild(null);
-          setShowChildSelection(false);
-          setIsProcessing(false);
-          onClose();
-        }
-      }}
-    >
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="relative p-6 border-b border-gray-100">
           <button
-            onClick={() => {
-              setSelectedChild(null);
-              setShowChildSelection(false);
-              setIsProcessing(false);
-              onClose();
-            }}
+            onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
@@ -189,28 +141,6 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
             </div>
           </div>
 
-          {/* Selected Child Display */}
-          {selectedChild && (
-            <div className="bg-[#4FBA73]/10 rounded-xl p-4 mb-6">
-              <h3 className="font-semibold text-[#4FBA73] mb-2">Enfant sélectionné :</h3>
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">{selectedChild.photo}</span>
-                <div>
-                  <p className="font-medium">{selectedChild.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedChild.club} • {selectedChild.country}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowChildSelection(true)}
-                className="text-[#4FBA73] text-sm mt-2 hover:underline"
-              >
-                Changer d&apos;enfant
-              </button>
-            </div>
-          )}
-
           {/* Payment Button */}
           <button
             onClick={handlePayment}
@@ -226,7 +156,7 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
             ) : (
               <>
                 <CreditCard className="w-5 h-5" />
-                <span>{selectedChild ? 'Procéder au paiement' : 'Choisir un enfant'}</span>
+                <span>Procéder au paiement</span>
               </>
             )}
           </button>
@@ -239,17 +169,6 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           </div>
         </div>
       </div>
-      
-      {/* Child Selection Modal */}
-      <ChildSelectionModal
-        isOpen={showChildSelection}
-        onClose={() => {
-          setShowChildSelection(false);
-          // Ne pas réinitialiser selectedChild ici pour garder la sélection
-        }}
-        onSelectChild={handleSelectChild}
-        packTitle={pack.nom}
-      />
     </div>
   );
 }

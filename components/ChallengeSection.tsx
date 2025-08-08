@@ -1,13 +1,9 @@
-// components/ChallengeSection.jsx
-import { getLicenseStats } from '@/lib/licenseData';
-
 interface ChallengeSectionProps {
   onOpenChampionModal: () => void;
 }
 
 export default function ChallengeSection({ onOpenChampionModal }: ChallengeSectionProps) {
-  const stats = getLicenseStats();
-  const current = stats.championEquipment;
+  const current = 42; // Valeur statique pour le défi
   const goal = 100;
   const progressPercent = (current / goal) * 100;
 

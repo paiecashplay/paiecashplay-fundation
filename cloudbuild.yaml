@@ -26,6 +26,6 @@ substitutions:
   _IMAGE: 'us-central1-docker.pkg.dev/crypto-arcade-401717/paiecashplay/fundation:latest'
   _SERVICE: 'paiecashplay-service'
   _REGION: 'us-central1'
-
+ 
 # Timeout de 10 minutes
 timeout: 600s

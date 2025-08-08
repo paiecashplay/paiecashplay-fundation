@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 
 # Utiliser les variables d'environnement de production
-COPY .env.production .env
+COPY .env.production .env 
 # Forcer NODE_ENV pour la compilation
 ENV NODE_ENV=production
 

@@ -1,85 +1,74 @@
-'use client';
+'use client'
 
-import { useState, useEffect, createContext, useContext } from 'react';
-
-interface Admin {
-  id: string;
-  email: string;
-  nom: string;
-  prenom: string;
-  role: string;
-}
-
-interface AuthContextType {
-  admin: Admin | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { useState, useEffect } from 'react'
+import { User } from '@/lib/auth'
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-export function useAuthState() {
-  const [admin, setAdmin] = useState<Admin | null>(null);
-  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    // Vérifier si l'utilisateur vient d'être déconnecté
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('logged_out') === 'true') {
+      localStorage.setItem('force_login', 'true')
+      // Nettoyer l'URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+    
+    checkAuth()
+  }, [])
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await fetch('/api/auth/me')
       if (response.ok) {
-        const data = await response.json();
-        setAdmin(data.admin);
-      } else {
-        setAdmin(null);
+        const userData = await response.json()
+        setUser(userData)
       }
     } catch (error) {
-      setAdmin(null);
+      console.error('Auth check failed:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAdmin(data.admin);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      return false;
+  const login = () => {
+    const forceLogin = localStorage.getItem('force_login') === 'true'
+    if (forceLogin) {
+      localStorage.removeItem('force_login')
+      window.location.href = '/api/auth/login?force_login=true'
+    } else {
+      window.location.href = '/api/auth/login'
     }
-  };
+  }
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      if (response.ok) {
+        setUser(null)
+        // Marquer qu'une déconnexion a eu lieu pour forcer la réauthentification
+        localStorage.setItem('force_login', 'true')
+        window.location.href = '/'
+      }
     } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setAdmin(null);
+      console.error('Logout failed:', error)
+      // Forcer la déconnexion locale même en cas d'erreur
+      setUser(null)
+      localStorage.setItem('force_login', 'true')
+      window.location.href = '/'
     }
-  };
+  }
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const isAdmin = user?.user_type === 'federation' || user?.user_type === 'company'
 
-  return { admin, loading, login, logout, checkAuth };
+  return {
+    user,
+    loading,
+    login,
+    logout,
+    isAdmin,
+    checkAuth
+  }
 }

@@ -5,14 +5,13 @@ import { FaBell } from 'react-icons/fa';
 import { LogIn, UserPlus, Globe, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import UserDropdown from '@/components/UserDropdown';
-import { useKeycloakAuth } from '@/hooks/useKeycloakAuth';
-import { keycloakUrls } from '@/lib/keycloak';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
   const [lang, setLang] = useState('fr');
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { user, loading, isAdmin } = useKeycloakAuth();
+  const { user, loading, login, isAdmin } = useAuth();
 
   const languages = [
     { code: 'fr', name: 'Français', flag: '🇫🇷' },
@@ -83,13 +82,11 @@ export function Header() {
 
             {/* Authentication */}
             {loading ? (
-              // État de chargement
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
               </div>
             ) : (
               user ? (
-                // Menu admin connecté
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <FaBell className="text-xl cursor-pointer" />
@@ -100,16 +97,21 @@ export function Header() {
                   <UserDropdown />
                 </div>
               ) : (
-                // Boutons d'authentification Keycloak
                 <div className="flex items-center space-x-3">
-                  <a href={keycloakUrls.register} className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
+                  <button 
+                    onClick={login}
+                    className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+                  >
                     <UserPlus className="w-4 h-4" />
                     <span>S'inscrire</span>
-                  </a>
-                  <a href={keycloakUrls.login} className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
+                  </button>
+                  <button 
+                    onClick={login}
+                    className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+                  >
                     <LogIn className="w-4 h-4" />
                     <span>Connexion</span>
-                  </a>
+                  </button>
                 </div>
               )
             )}
@@ -138,21 +140,19 @@ export function Header() {
 
             {/* Authentication Mobile */}
             {loading ? (
-              // État de chargement mobile
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
               </div>
             ) : (
               user ? (
                 <div className="space-y-4">
-                  {/* User Info */}
                   <div className="bg-white/10 rounded-lg p-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-lg font-medium">
-                        {user.firstName?.charAt(0) || ''}{user.lastName?.charAt(0) || ''}
+                        {user.given_name?.charAt(0) || ''}{user.family_name?.charAt(0) || ''}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium">{user.firstName} {user.lastName}</p>
+                        <p className="font-medium">{user.name}</p>
                         <p className="text-sm text-white/70">{user.email}</p>
                       </div>
                       <div className="relative">
@@ -164,35 +164,36 @@ export function Header() {
                     </div>
                   </div>
                   
-                  {/* User Actions */}
                   <div className="flex flex-col space-y-2">
                     <Link href="/profile" className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors">
                       <span>Mon profil</span>
+                    </Link>
+                    <Link href="/dashboard" className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors">
+                      <span>Dashboard</span>
                     </Link>
                     {isAdmin && (
                       <Link href="/admin" className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors">
                         <span>Administration</span>
                       </Link>
                     )}
-                    <button 
-                      onClick={() => window.location.href = keycloakUrls.logout}
-                      className="flex items-center justify-center space-x-2 bg-red-500/20 hover:bg-red-500/30 px-4 py-3 rounded-lg transition-colors text-white"
-                    >
-                      <LogIn className="w-5 h-5 transform rotate-180" />
-                      <span>Déconnexion</span>
-                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col space-y-2">
-                  <a href={keycloakUrls.register} className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors">
+                  <button 
+                    onClick={login}
+                    className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors"
+                  >
                     <UserPlus className="w-5 h-5" />
                     <span>S'inscrire</span>
-                  </a>
-                  <a href={keycloakUrls.login} className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors">
+                  </button>
+                  <button 
+                    onClick={login}
+                    className="flex items-center justify-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-lg transition-colors"
+                  >
                     <LogIn className="w-5 h-5" />
                     <span>Connexion</span>
-                  </a>
+                  </button>
                 </div>
               )
             )}
