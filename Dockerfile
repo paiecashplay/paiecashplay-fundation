@@ -12,7 +12,7 @@ COPY . .
 # Variables d'environnement par défaut (à surcharger en production)
 ENV NODE_ENV=production
 ENV OAUTH_ISSUER=https://auth.paiecashplay.com
-ENV OAUTH_REDIRECT_URI=https://votre-app-cloud-run.com/api/auth/callback
+ENV OAUTH_REDIRECT_URI=https://fundation.paiecashplay.com/api/auth/callback
 
 # Build de l'application
 RUN npm run build
