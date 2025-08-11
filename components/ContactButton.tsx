@@ -9,11 +9,11 @@ interface ContactButtonProps {
 }
 
 export function ContactButton({ className, children }: ContactButtonProps) {
-  const { onOpen } = useContactModal();
+  const { openModal } = useContactModal();
 
   return (
     <Button
-      onClick={onOpen}
+      onClick={openModal}
       className={className}
     >
       {children || 'Contactez-nous'}

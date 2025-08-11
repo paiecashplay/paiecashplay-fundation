@@ -29,7 +29,7 @@ export function Header() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           {/* Logo + Titre */}
-          <div className="flex items-center space-x-3 md:space-x-4">
+          <Link href="/" className="flex items-center space-x-3 md:space-x-4 hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center">
               <span className="text-green-600 font-bold text-lg md:text-xl">P</span>
             </div>
@@ -37,7 +37,7 @@ export function Header() {
               <h1 className="text-xl md:text-2xl font-bold">PaieCashPlay</h1>
               <p className="text-blue-100 text-xs md:text-sm">Sport Solidaire</p>
             </div>
-          </div>
+          </Link>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">

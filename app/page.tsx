@@ -13,6 +13,7 @@ import ChallengeSection from '../components/ChallengeSection';
 import RecentUpdatesAndSocial from '../components/RecentUpdatesAndSocial';
 import CallToAction from '../components/CallToAction';
 import Footer from '@/components/layout/Footer';
+import DonationResume from '../components/DonationResume';
 
 
 
@@ -80,7 +81,7 @@ export default function Home() {
         <ChallengeSection onOpenChampionModal={handleOpenChampionModal} />
 
         {/* Impact Statistics */}
-        <WallAndImpact />
+        <WallAndImpact donationPacksRef={donationPacksRef} />
       
         {/* Recent Updates Feed */}
       <RecentUpdatesAndSocial />
@@ -92,6 +93,9 @@ export default function Home() {
       </div>
     </div>
     <Footer />
+    
+    {/* Composant pour reprendre le don après connexion */}
+    <DonationResume />
     </>
   );
 }

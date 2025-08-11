@@ -30,12 +30,18 @@ export default function ChildrenSupported() {
     try {
       setLoading(true);
       const response = await fetch('/api/enfants/supported');
-      const result = await response.json();
       
-      if (result.success) {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Données reçues:', result);
+      
+      if (result.success && result.data) {
         setChildren(result.data.slice(0, 3)); // Prendre les 3 premiers
       } else {
-        setError('Erreur lors du chargement des enfants soutenus');
+        setError('Aucune donnée disponible');
       }
     } catch (err) {
       setError('Erreur de connexion');

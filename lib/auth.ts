@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken'
-import { cookies } from 'next/headers'
 
 export interface User {
   sub: string
@@ -9,7 +8,7 @@ export interface User {
   given_name: string
   family_name: string
   picture?: string
-  user_type: 'player' | 'club' | 'federation' | 'donor' | 'company' | 'affiliate'
+  user_type: 'player' | 'club' | 'federation' | 'donor' | 'company' | 'affiliate' | 'admin'
   metadata?: any
   access_token?: string
   refresh_token?: string
@@ -36,7 +35,7 @@ export function getAuthorizationUrl(state: string, forceLogin = false): string {
     response_type: 'code',
     client_id: process.env.OAUTH_CLIENT_ID!,
     redirect_uri: process.env.OAUTH_REDIRECT_URI!,
-    scope: 'openid profile email clubs:read clubs:members users:write',
+    scope: 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read',
     state
   })
   
@@ -83,8 +82,9 @@ export async function getUserInfo(accessToken: string): Promise<User> {
 
 // Créer une session locale avec JWT
 export function createSession(user: User, tokens: AuthTokens): string {
+  const { exp, iat, ...cleanUser } = user as any
   const sessionData = {
-    ...user,
+    ...cleanUser,
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token
   }
@@ -100,15 +100,61 @@ export function verifySession(token: string): User | null {
   }
 }
 
-// Récupérer l'utilisateur actuel depuis les cookies
+// Rafraîchir le token d'accès
+export async function refreshAccessToken(refreshToken: string): Promise<AuthTokens> {
+  const response = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: process.env.OAUTH_CLIENT_ID!,
+      client_secret: process.env.OAUTH_CLIENT_SECRET!
+    })
+  })
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('Erreur refresh token:', response.status, errorText)
+    throw new Error(`Failed to refresh token: ${response.status} ${errorText}`)
+  }
+  
+  return response.json()
+}
+
+// Récupérer l'utilisateur actuel depuis les cookies (server-side)
 export async function getCurrentUser(): Promise<User | null> {
   try {
+    const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
     const token = cookieStore.get('auth-token')?.value
     
     if (!token) return null
     
-    return verifySession(token)
+    const user = verifySession(token)
+    if (!user) return null
+    
+    // Vérifier si le token est expiré et le rafraîchir si nécessaire
+    if (user.refresh_token) {
+      try {
+        // Test rapide du token actuel
+        const testResponse = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/userinfo`, {
+          headers: { 'Authorization': `Bearer ${user.access_token}` }
+        })
+        
+        if (!testResponse.ok && testResponse.status === 401) {
+          console.log('Token expiré, refresh token aussi expiré - déconnexion nécessaire')
+          // Les deux tokens sont expirés, supprimer la session
+          cookieStore.delete('auth-token')
+          return null
+        }
+      } catch (error) {
+        console.error('Erreur lors du rafraîchissement du token:', error)
+        return null
+      }
+    }
+    
+    return user
   } catch {
     return null
   }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Search, MapPin, Users } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
+import { useToastContext } from '@/components/ToastProvider';
 
 interface Child {
   id: string;
@@ -31,8 +32,9 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToastContext();
 
-  // Charger les enfants depuis la base de données
+  // Charger les enfants depuis l'API OAuth publique
   useEffect(() => {
     if (isOpen) {
       fetchChildren();
@@ -42,20 +44,51 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const fetchChildren = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/enfants/without-license');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER || 'http://localhost:3000'}/api/public/players`);
       const result = await response.json();
       
-      if (result.success) {
-        setChildren(result.data);
+      if (result.players) {
+        const formattedChildren = result.players.map((player: any) => ({
+          id: player.id,
+          nom: player.lastName || 'Nom',
+          prenom: player.firstName || 'Prénom',
+          age: player.metadata?.birthDate ? 
+            new Date().getFullYear() - new Date(player.metadata.birthDate).getFullYear() : 18,
+          position: player.metadata?.position || 'Joueur',
+          has_license: false,
+          photo_emoji: getRandomEmoji(),
+          club_nom: player.club?.name || 'Club de Football',
+          pays_nom: player.country || 'France',
+          federation_nom: player.federation?.name || 'Fédération',
+          flag_emoji: getCountryFlag(player.country || 'FR')
+        }));
+        setChildren(formattedChildren);
       } else {
-        setError('Erreur lors du chargement des enfants');
+        const errorMsg = 'Aucun enfant disponible';
+        setError(errorMsg);
+        toast.warning('Aucun enfant', errorMsg);
       }
     } catch (err) {
-      setError('Erreur de connexion');
+      const errorMsg = 'Erreur de connexion';
+      setError(errorMsg);
+      toast.error('Erreur de chargement', errorMsg);
       console.error('Erreur fetch enfants:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRandomEmoji = () => {
+    const emojis = ['⚽', '🏃♂️', '🏆', '🥅', '👟', '🎯', '⭐', '🔥', '💪', '🏅'];
+    return emojis[Math.floor(Math.random() * emojis.length)];
+  };
+
+  const getCountryFlag = (countryCode: string) => {
+    const flags: { [key: string]: string } = {
+      'FR': '🇫🇷', 'CM': '🇨🇲', 'SN': '🇸🇳', 'CI': '🇨🇮', 'MA': '🇲🇦',
+      'DZ': '🇩🇿', 'TN': '🇹🇳', 'NG': '🇳🇬', 'GH': '🇬🇭', 'KE': '🇰🇪'
+    };
+    return flags[countryCode] || '🌍';
   };
 
   const filteredChildren = children.filter(child =>
@@ -69,8 +102,9 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
 
   const handleConfirm = () => {
     if (selectedChild) {
+      toast.success('Enfant sélectionné', `${selectedChild.prenom} ${selectedChild.nom} bénéficiera de votre don`);
       onSelectChild(selectedChild);
-      onClose();
+      // Ne pas fermer le modal ici, laisser le parent gérer
     }
   };
 

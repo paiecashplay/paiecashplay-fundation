@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { useToastContext } from '@/components/ToastProvider';
 import { Loader2 } from 'lucide-react';
 import { sendContactForm } from '@/lib/emailjs';
 
@@ -39,6 +39,7 @@ interface ContactFormModalProps {
 
 export function ContactFormModal({ open, onOpenChange }: ContactFormModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToastContext();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,7 +65,7 @@ export function ContactFormModal({ open, onOpenChange }: ContactFormModalProps) 
       // Tentative d'envoi via EmailJS
       try {
         await sendContactForm(data);
-        toast.success('Message envoyé avec succès !');
+        toast.success('Message envoyé', 'Votre message a été envoyé avec succès !');
         form.reset();
         onOpenChange(false);
       } catch (error) {
@@ -72,7 +73,7 @@ export function ContactFormModal({ open, onOpenChange }: ContactFormModalProps) 
         
         // Si EmailJS échoue mais que le système de sauvegarde locale a fonctionné
         if (error instanceof Error && error.message.includes('EmailJS')) {
-          toast.success('Votre message a été enregistré et sera traité dès que possible.');
+          toast.success('Message enregistré', 'Votre message a été enregistré et sera traité dès que possible.');
           form.reset();
           onOpenChange(false);
         } else {
@@ -86,7 +87,7 @@ export function ContactFormModal({ open, onOpenChange }: ContactFormModalProps) 
           });
           
           if (response.ok) {
-            toast.success('Votre message a été enregistré et sera traité dès que possible.');
+            toast.success('Message enregistré', 'Votre message a été enregistré et sera traité dès que possible.');
             form.reset();
             onOpenChange(false);
           } else {
@@ -96,7 +97,7 @@ export function ContactFormModal({ open, onOpenChange }: ContactFormModalProps) 
       }
     } catch (error) {
       console.error('Erreur complète:', error);
-      toast.error('Une erreur est survenue. Veuillez réessayer.');
+      toast.error('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
     }

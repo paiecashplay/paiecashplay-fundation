@@ -1,52 +1,68 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe-server'
-import { getCurrentUser } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-02-24.acacia',
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    
-    const { amount, donationType, packName, isRecurring, enfantId } = await request.json()
+    const {
+      amount,
+      donationType,
+      packName,
+      isRecurring,
+      childId,
+      childName,
+      isAnonymous,
+      donorId
+    } = await request.json();
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    }
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://your-domain.com' 
+      : 'http://localhost:3001';
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
-      mode: isRecurring ? 'subscription' : 'payment',
       line_items: [
         {
           price_data: {
             currency: 'eur',
             product_data: {
-              name: packName || 'Don PaieCashPlay',
-              description: `Don ${donationType} - PaieCashPlay Fondation`,
+              name: `${packName} - ${childName}`,
+              description: donationType,
             },
-            unit_amount: Math.round(amount * 100),
+            unit_amount: amount * 100,
             ...(isRecurring && {
               recurring: {
-                interval: donationType.includes('mensuel') ? 'month' : 'year',
+                interval: 'month',
               },
             }),
           },
           quantity: 1,
         },
       ],
-      success_url: `${request.nextUrl.origin}/donation-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}`,
+      mode: isRecurring ? 'subscription' : 'payment',
+      success_url: `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/?cancelled=true`,
       metadata: {
         donationType,
-        packName: packName || 'Don personnalisé',
-        userId: user?.sub || 'anonymous',
-        enfantId: enfantId || '',
+        packName,
+        childId: childId?.toString() || '',
+        childName,
+        isAnonymous: isAnonymous.toString(),
+        donorId: donorId || '',
       },
-      customer_email: user?.email,
-    })
+    };
 
-    return NextResponse.json({ sessionId: session.id })
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    return NextResponse.json({ sessionId: session.id });
   } catch (error) {
-    console.error('Erreur création session Stripe:', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('Erreur création session Stripe:', error);
+    return NextResponse.json(
+      { error: 'Erreur lors de la création de la session de paiement' },
+      { status: 500 }
+    );
   }
 }

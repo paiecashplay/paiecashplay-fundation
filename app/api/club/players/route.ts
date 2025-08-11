@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { getClubPlayers } from '@/lib/services/clubService'
+import { getClubMembers } from '@/lib/services/clubService'
 
 export async function GET() {
   try {
@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'No access token available' }, { status: 401 })
     }
 
-    const players = await getClubPlayers(user.sub, user.access_token)
+    const players = await getClubMembers(user.sub)
     return NextResponse.json(players)
   } catch (error) {
     console.error('Error fetching club players:', error)

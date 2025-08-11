@@ -1,199 +1,247 @@
-import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
+
+const getOAuthBaseUrl = () => {
+  return process.env.OAUTH_ISSUER || 'http://localhost:3000'
+}
 
 export interface ClubMember {
   id: string
   email: string
   firstName: string
   lastName: string
-  userType: string
   country: string
-  phone: string
+  phone?: string
+  isVerified: boolean
+  createdAt: string
   metadata?: {
     position?: string
     licenseNumber?: string
-    age?: number
-    [key: string]: any
-  }
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ClubLicence {
-  id: string
-  numero_licence: string
-  joueur_oauth_id: string
-  pack_donation_id: string
-  date_emission: Date
-  date_expiration: Date
-  statut: string
-  montant_paye: number
-  pack: {
-    nom: string
-    code: string
+    jerseyNumber?: string
+    birthDate?: string
+    height?: string
+    weight?: string
+    status?: 'active' | 'injured' | 'suspended'
+    contractUntil?: string
   }
 }
 
-// Récupérer les membres du club depuis le service OAuth
-export async function getClubMembers(clubOAuthId: string, accessToken: string): Promise<ClubMember[]> {
-  try {
-    const response = await fetch(`${process.env.OAUTH_ISSUER}/api/oauth/clubs/${clubOAuthId}/members`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch club members')
+export interface ClubStats {
+  totalMembers: number
+  membersByPosition: {
+    goalkeeper: number
+    defender: number
+    midfielder: number
+    forward: number
+  }
+  membersByStatus: {
+    active: number
+    injured: number
+    suspended: number
+  }
+  averageAge: number
+}
+
+class PaieCashAuthAPI {
+  constructor(private baseUrl: string, private accessToken?: string) {}
+
+  setAccessToken(token: string) {
+    this.accessToken = token
+  }
+
+  async makeRequest(endpoint: string, options: RequestInit = {}) {
+    const url = `${this.baseUrl}${endpoint}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(options.headers as Record<string, string>)
     }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error fetching club members:', error)
-    return []
-  }
-}
 
-// Ajouter un membre au club via le service OAuth
-export async function addClubMember(clubOAuthId: string, accessToken: string, memberData: {
-  email: string
-  given_name: string
-  family_name: string
-  metadata?: any
-}): Promise<boolean> {
-  try {
-    const response = await fetch(`${process.env.OAUTH_ISSUER}/api/oauth/clubs/${clubOAuthId}/members`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        email: memberData.email,
-        password: 'temp123456', // Mot de passe temporaire
-        firstName: memberData.given_name,
-        lastName: memberData.family_name,
-        country: 'FR', // Par défaut
-        phone: '',
-        metadata: memberData.metadata || {}
-      })
-    })
-    
-    return response.ok
-  } catch (error) {
-    console.error('Error adding club member:', error)
-    return false
-  }
-}
-
-// Mettre à jour un membre du club
-export async function updateClubMember(memberOAuthId: string, accessToken: string, memberData: {
-  given_name?: string
-  family_name?: string
-  email?: string
-  metadata?: any
-}): Promise<boolean> {
-  try {
-    const response = await fetch(`${process.env.OAUTH_ISSUER}/api/oauth/users/${memberOAuthId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        firstName: memberData.given_name,
-        lastName: memberData.family_name,
-        email: memberData.email,
-        metadata: memberData.metadata
-      })
-    })
-    
-    return response.ok
-  } catch (error) {
-    console.error('Error updating club member:', error)
-    return false
-  }
-}
-
-// Récupérer les licences du club
-export async function getClubLicences(clubOAuthId: string): Promise<ClubLicence[]> {
-  return await prisma.licence.findMany({
-    where: { club_oauth_id: clubOAuthId },
-    include: {
-      pack: {
-        select: {
-          nom: true,
-          code: true
-        }
-      }
-    },
-    orderBy: { created_at: 'desc' }
-  })
-}
-
-// Créer une licence pour un joueur
-export async function createLicence(licenceData: {
-  joueur_oauth_id: string
-  club_oauth_id: string
-  pack_donation_id: string
-  montant_paye: number
-  date_expiration: Date
-}): Promise<string | null> {
-  try {
-    const numeroLicence = `LIC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    
-    const licence = await prisma.licence.create({
-      data: {
-        numero_licence: numeroLicence,
-        ...licenceData
-      }
-    })
-    
-    return licence.id
-  } catch (error) {
-    console.error('Error creating licence:', error)
-    return null
-  }
-}
-
-// Récupérer les joueurs d'un club
-export async function getClubPlayers(clubOAuthId: string, accessToken: string): Promise<ClubMember[]> {
-  try {
-    const response = await fetch(`${process.env.OAUTH_ISSUER}/api/oauth/players?club_id=${clubOAuthId}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch club players')
+    // Ajouter le Bearer token pour les endpoints OAuth
+    if (this.accessToken && endpoint.startsWith('/api/oauth')) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`
     }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error fetching club players:', error)
-    return []
+
+    console.log(`🔄 API Call: ${options.method || 'GET'} ${url}`)
+    console.log('📋 Headers:', headers)
+    if (this.accessToken) {
+      console.log(`🔑 Token: ${this.accessToken.substring(0, 20)}...`)
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ API Error ${response.status}:`, errorText)
+      
+      // Gestion spéciale des tokens expirés
+      if (response.status === 401) {
+        throw new Error('TOKEN_EXPIRED')
+      }
+      
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText }
+      }
+      
+      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ API Success:', result)
+    return result
   }
 }
 
-// Statistiques du club
-export async function getClubStats(clubOAuthId: string, accessToken: string) {
-  const [totalLicences, activeLicences, totalMembers] = await Promise.all([
-    prisma.licence.count({
-      where: { club_oauth_id: clubOAuthId }
-    }),
-    prisma.licence.count({
-      where: { 
-        club_oauth_id: clubOAuthId,
-        statut: 'active'
-      }
-    }),
-    getClubMembers(clubOAuthId, accessToken).then(members => members.length)
-  ])
+export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
+  const user = await getCurrentUser()
+  if (!user?.access_token) {
+    throw new Error('Non authentifié')
+  }
+
+  // Utiliser directement l'ID du club depuis l'utilisateur connecté
+  const userClubId = user.sub
   
-  return {
-    totalMembers,
-    totalLicences,
-    activeLicences,
-    expiredLicences: totalLicences - activeLicences
+  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  
+  try {
+    const result = await api.makeRequest(`/api/oauth/clubs/${userClubId}/members`)
+    return result.members || []
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      throw new Error('Session expirée, veuillez vous reconnecter')
+    }
+    throw error
+  }
+}
+
+export async function addClubMember(user: any, memberData: {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  country: string
+  phone?: string
+  metadata?: {
+    position?: string
+    licenseNumber?: string
+  }
+}): Promise<ClubMember> {
+  if (!user?.access_token) {
+    throw new Error('Non authentifié')
+  }
+
+  // Vérifier que l'utilisateur est bien un club
+  if (user.user_type !== 'club') {
+    throw new Error('Seuls les clubs peuvent ajouter des membres')
+  }
+
+  // L'utilisateur connecté est le club lui-même (user.sub = club ID)
+  const userClubId = user.sub
+  
+  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  
+  try {
+    console.log('📝 Données membre à ajouter:', memberData)
+    console.log('🏢 Club ID utilisé:', userClubId)
+    console.log('👤 Type utilisateur:', user.user_type)
+    
+    // Le membre ajouté sera automatiquement de type 'player'
+    const memberWithType = {
+      ...memberData,
+      userType: 'player'
+    }
+    
+    const result = await api.makeRequest(`/api/oauth/clubs/${userClubId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(memberWithType)
+    })
+    
+    return result.member
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      throw new Error('Session expirée, veuillez vous reconnecter')
+    }
+    throw error
+  }
+}
+
+export async function updateClubMember(user: any, memberId: string, memberData: Partial<ClubMember>): Promise<ClubMember> {
+  if (!user?.access_token) {
+    throw new Error('Non authentifié')
+  }
+
+  if (user.user_type !== 'club') {
+    throw new Error('Seuls les clubs peuvent modifier des membres')
+  }
+
+  const userClubId = user.sub
+  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  
+  try {
+    const result = await api.makeRequest(`/api/oauth/clubs/${userClubId}/members/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(memberData)
+    })
+    
+    return result.member
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      throw new Error('Session expirée, veuillez vous reconnecter')
+    }
+    throw error
+  }
+}
+
+export async function deleteClubMember(user: any, memberId: string): Promise<void> {
+  if (!user?.access_token) {
+    throw new Error('Non authentifié')
+  }
+
+  if (user.user_type !== 'club') {
+    throw new Error('Seuls les clubs peuvent supprimer des membres')
+  }
+
+  const userClubId = user.sub
+  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  
+  try {
+    await api.makeRequest(`/api/oauth/clubs/${userClubId}/members/${memberId}`, {
+      method: 'DELETE'
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      throw new Error('Session expirée, veuillez vous reconnecter')
+    }
+    throw error
+  }
+}
+
+
+
+export async function getClubStats(clubId: string): Promise<ClubStats> {
+  const user = await getCurrentUser()
+  if (!user?.access_token) {
+    throw new Error('Non authentifié')
+  }
+
+  // Utiliser directement l'ID du club depuis l'utilisateur connecté
+  const userClubId = user.sub
+  
+  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  
+  try {
+    const result = await api.makeRequest(`/api/oauth/stats/clubs/${userClubId}`)
+    return result.statistics
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOKEN_EXPIRED') {
+      throw new Error('Session expirée, veuillez vous reconnecter')
+    }
+    throw error
   }
 }

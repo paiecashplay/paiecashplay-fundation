@@ -22,8 +22,13 @@ export async function getActiveDonationPacks(): Promise<PackDonation[]> {
   // S'assurer que les données de seed existent
   await ensureSeedData()
   
-  return await prisma.packDonation.findMany({
+  const packs = await prisma.packDonation.findMany({
     where: { actif: true },
     orderBy: { ordre_affichage: 'asc' }
   })
+  
+  return packs.map(pack => ({
+    ...pack,
+    prix: Number(pack.prix)
+  }))
 }

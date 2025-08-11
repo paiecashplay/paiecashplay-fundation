@@ -2,6 +2,7 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
+import { ToastProvider } from '@/components/ToastProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,11 +25,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://cdn.jsdelivr.net/npm/chart.js"
           defer
         ></script>
+        {/* Confetti CDN */}
+        <script
+          src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"
+          defer
+        ></script>
       </head>
       <body className={inter.className}>
-        <Suspense fallback={<div>Chargement de la page...</div>}>
-          {children}
-        </Suspense>
+        <ToastProvider>
+          <Suspense fallback={<div>Chargement de la page...</div>}>
+            {children}
+          </Suspense>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -47,3 +47,42 @@ model Licence {
 
   @@map("licences")
 }
+
+model Donation {
+  id                String    @id @default(cuid())
+  montant           Decimal   @db.Decimal(10, 2)
+  type_recurrence   String    @default("unique") @db.VarChar(20)
+  statut            String    @default("pending") @db.VarChar(20)
+  stripe_session_id String?   @unique
+  donateur_id       String?
+  joueur_id         Int
+  pack_nom          String    @db.VarChar(100)
+  is_anonymous      Boolean   @default(false)
+  date_creation     DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  joueur            Joueur    @relation(fields: [joueur_id], references: [id])
+
+  @@map("donations")
+}
+
+model Joueur {
+  id                Int         @id @default(autoincrement())
+  oauth_id          String?     @unique
+  prenom            String      @db.VarChar(50)
+  nom               String      @db.VarChar(50)
+  age               Int?
+  position          String?     @db.VarChar(30)
+  club_nom          String?     @db.VarChar(100)
+  pays_nom          String?     @db.VarChar(50)
+  photo_emoji       String?     @db.VarChar(10)
+  total_dons_recus  Decimal     @default(0) @db.Decimal(10, 2)
+  nombre_donateurs  Int         @default(0)
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+
+  donations         Donation[]
+
+  @@unique([prenom, nom], name: "prenom_nom")
+  @@map("joueurs")
+}

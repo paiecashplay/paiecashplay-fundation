@@ -1,7 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Check, CreditCard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Check, CreditCard, User } from 'lucide-react';
+import ChildSelectionModal from './ChildSelectionModal';
+import AuthChoiceModal from './AuthChoiceModal';
+import { useAuth } from '@/hooks/useAuth';
+import { markUserAsDonor } from '@/lib/services/donorService';
+import { useToastContext } from '@/components/ToastProvider';
+import { useDonationState } from '@/hooks/useDonationState';
 
 interface DonationPack {
   id: string;
@@ -24,13 +30,87 @@ interface DonationModalProps {
 
 export default function DonationModal({ isOpen, onClose, pack }: DonationModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [step, setStep] = useState<'child' | 'auth' | 'payment'>('child');
+  const [selectedChild, setSelectedChild] = useState<any>(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const { user, login } = useAuth();
+  const { toast } = useToastContext();
+  const { saveDonationState, clearDonationState } = useDonationState();
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep('child');
+      setSelectedChild(null);
+      setIsAnonymous(false);
+    }
+  }, [isOpen]);
+
+  // Restaurer l'état sauvegardé si l'utilisateur est connecté
+  useEffect(() => {
+    if (isOpen && user && !selectedChild) {
+      const savedState = localStorage.getItem('pending_donation_state');
+      if (savedState) {
+        try {
+          const parsedState = JSON.parse(savedState);
+          if (parsedState.selectedChild) {
+            setSelectedChild(parsedState.selectedChild);
+            setStep('payment');
+            // Nettoyer immédiatement l'état sauvegardé
+            localStorage.removeItem('pending_donation_state');
+          }
+        } catch (error) {
+          console.error('Erreur restauration état:', error);
+          localStorage.removeItem('pending_donation_state');
+        }
+      }
+    }
+  }, [isOpen, user, selectedChild]);
 
   if (!isOpen || !pack) return null;
+
+  const handleChildSelection = (child: any) => {
+    setSelectedChild(child);
+    if (user) {
+      setStep('payment');
+    } else {
+      setStep('auth');
+    }
+  };
+
+  const handleLogin = async () => {
+    // Sauvegarder l'état de donation avant la connexion
+    if (pack && selectedChild) {
+      saveDonationState({
+        pack,
+        selectedChild,
+        step: 'payment'
+      });
+      toast.info('Don en attente', 'Votre don sera repris après connexion');
+    }
+    await login();
+  };
+
+  const handleAnonymous = () => {
+    setIsAnonymous(true);
+    setStep('payment');
+  };
 
   const handlePayment = async () => {
     setIsProcessing(true);
     
     try {
+      // Si utilisateur connecté et pas encore donateur, le marquer comme donateur
+      if (user && !isAnonymous) {
+        try {
+          await markUserAsDonor(user.sub, {
+            totalDonated: pack.prix,
+            preferredCauses: ['youth_development']
+          }, toast);
+        } catch (error) {
+          console.log('Utilisateur déjà donateur ou erreur:', error);
+        }
+      }
+
       const { getStripe } = await import('@/lib/stripe');
       const stripe = await getStripe();
       
@@ -46,24 +126,68 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
           amount,
           donationType: isRecurring ? `Don ${pack.type_recurrence}` : 'Don unique',
           packName: pack.nom,
-          isRecurring
+          isRecurring,
+          childId: selectedChild?.id,
+          childName: `${selectedChild?.prenom} ${selectedChild?.nom}`,
+          isAnonymous,
+          donorId: isAnonymous ? null : user?.sub
         }),
       });
       
       const { sessionId } = await response.json();
       
       if (stripe && sessionId) {
+        toast.info('Redirection vers le paiement', 'Vous allez être redirigé vers Stripe');
         const { error } = await stripe.redirectToCheckout({ sessionId });
         if (error) {
+          toast.error('Erreur de paiement', error.message || 'Erreur lors de la redirection');
           console.error('Erreur Stripe:', error);
         }
+      } else {
+        toast.error('Erreur de configuration', 'Impossible d\'initialiser le paiement');
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      toast.error('Erreur lors du paiement', errorMessage);
       console.error('Erreur de paiement:', error);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleClose = () => {
+    setStep('child');
+    setSelectedChild(null);
+    setIsAnonymous(false);
+    clearDonationState(); // Nettoyer l'état sauvegardé
+    onClose();
+  };
+
+  // Rendu conditionnel selon l'étape
+  if (step === 'child') {
+    return (
+      <ChildSelectionModal
+        isOpen={true}
+        onClose={handleClose}
+        onSelectChild={handleChildSelection}
+        packTitle={pack.nom}
+      />
+    );
+  }
+
+  if (step === 'auth') {
+    return (
+      <AuthChoiceModal
+        isOpen={true}
+        onClose={handleClose}
+        onLogin={handleLogin}
+        onAnonymous={handleAnonymous}
+        packName={pack.nom}
+        childName={`${selectedChild?.prenom} ${selectedChild?.nom}`}
+        amount={pack.prix}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -71,7 +195,7 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
         {/* Header */}
         <div className="relative p-6 border-b border-gray-100">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
@@ -88,6 +212,23 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
               </p>
             </div>
           </div>
+          
+          {/* Enfant sélectionné */}
+          {selectedChild && (
+            <div className="mt-4 p-3 bg-[#4FBA73]/10 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">{selectedChild.photo_emoji}</span>
+                <div>
+                  <p className="font-medium text-[#4FBA73]">
+                    Pour {selectedChild.prenom} {selectedChild.nom}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedChild.club_nom} • {selectedChild.pays_nom}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
