@@ -36,6 +36,6 @@ export async function GET() {
   cookieStore.delete('auth-token')
   
   // Rediriger vers la page d'accueil du site
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3001'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL  || 'http://localhost:3001'
   return NextResponse.redirect(new URL('/', baseUrl))
 }

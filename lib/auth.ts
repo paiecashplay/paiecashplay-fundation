@@ -24,6 +24,25 @@ export interface AuthTokens {
 
 const JWT_SECRET = process.env.JWT_SECRET!
 
+// Configuration dynamique basée sur l'environnement
+function getOAuthConfig() {
+  const isProduction = process.env.NODE_ENV === 'production'
+  
+  // Si on est en production et qu'on a encore localhost, forcer la config production
+  if (isProduction && process.env.OAUTH_ISSUER?.includes('localhost')) {
+    console.warn('⚠️  Configuration OAuth localhost détectée en production, utilisation des valeurs par défaut')
+    return {
+      issuer: 'https://auth.paiecashplay.com',
+      redirectUri: process.env.OAUTH_REDIRECT_URI?.replace('localhost:3001', 'votre-app-cloud-run.com') || process.env.OAUTH_REDIRECT_URI
+    }
+  }
+  
+  return {
+    issuer: process.env.OAUTH_ISSUER!,
+    redirectUri: process.env.OAUTH_REDIRECT_URI!
+  }
+}
+
 // Générer un state aléatoire pour la sécurité CSRF
 export function generateState(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
@@ -31,10 +50,11 @@ export function generateState(): string {
 
 // Construire l'URL d'autorisation
 export function getAuthorizationUrl(state: string, forceLogin = false): string {
+  const config = getOAuthConfig()
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: process.env.OAUTH_CLIENT_ID!,
-    redirect_uri: process.env.OAUTH_REDIRECT_URI!,
+    redirect_uri: config.redirectUri,
     scope: 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read',
     state
   })
@@ -43,7 +63,7 @@ export function getAuthorizationUrl(state: string, forceLogin = false): string {
     params.set('prompt', 'login')
   }
   
-  return `${process.env.OAUTH_ISSUER}/api/auth/authorize?${params}`
+  return `${config.issuer}/api/auth/authorize?${params}`
 }
 
 // Échanger le code contre des tokens
