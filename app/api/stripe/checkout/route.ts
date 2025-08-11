@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://your-domain.com' 
+      ? process.env.NEXTAUTH_URL
       : 'http://localhost:3001';
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
