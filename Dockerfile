@@ -132,11 +132,6 @@ ENV OAUTH_ISSUER=$OAUTH_ISSUER
 ARG OAUTH_REDIRECT_URI
 ENV OAUTH_REDIRECT_URI=$OAUTH_REDIRECT_URI
 
-# Rendre le script start.sh exécutable
-RUN chmod +x start.sh
-
-
-
 EXPOSE 8080
 
 # Scripts de démarrage et seed
