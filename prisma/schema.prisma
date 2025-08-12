@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = "mysql://donation:donation12344321@db.paiecahsplay.com:3306/bd-donation"
+  url      = "mysql://donation:donation12344321@db.paiecashplay.com:3306/bd-donation"
 }
 
 model PackDonation {
