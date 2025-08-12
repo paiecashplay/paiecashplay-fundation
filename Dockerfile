@@ -12,6 +12,21 @@ COPY . .
 # Variables d'environnement par défaut (à surcharger en production)
 ENV NODE_ENV=production
 
+# Arguments de build pour les variables de base de données
+ARG DB_HOST
+ENV DB_HOST=$DB_HOST
+
+ARG DB_USER
+ENV DB_USER=$DB_USER
+
+ARG DB_PORT
+ENV DB_PORT=$DB_PORT
+
+ARG DB_PASSWORD
+ENV DB_PASSWORD=$DB_PASSWORD
+
+ARG DB_NAME
+ENV DB_NAME=$DB_NAME
 
 ARG STRIPE_SECRET_KEY
 ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
@@ -43,24 +58,13 @@ ENV OAUTH_ISSUER=$OAUTH_ISSUER
 ARG OAUTH_REDIRECT_URI
 ENV OAUTH_REDIRECT_URI=$OAUTH_REDIRECT_URI
 
-ARG DB_HOST
-ENV DB_HOST=$DB_HOST
 
-ARG DB_USER
-ENV DB_USER=$DB_USER
+# Rendre le script start.sh exécutable
+RUN chmod +x start.sh
 
-
-ARG DB_PASSWORD
-ENV DB_PASSWORD=$DB_PASSWORD
-
-ARG DB_PORT
-ENV DB_PORT=$DB_PORT
-
-ARG DB_NAME
-ENV DB_NAME=$DB_NAME
 # Build de l'application
 RUN npm run build
 
 EXPOSE 8080
 
-CMD ["npm", "start"]
+CMD ["./start.sh"]
