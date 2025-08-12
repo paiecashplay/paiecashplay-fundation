@@ -1,10 +1,17 @@
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
 # Copier les fichiers de dépendances
-COPY package*.json ./
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
+
 RUN npm ci --only=production
+
+
+
+# Générer le client Prisma
+RUN npx prisma generate
 
 # Copier le code source
 COPY . .
@@ -58,13 +65,83 @@ ENV OAUTH_ISSUER=$OAUTH_ISSUER
 ARG OAUTH_REDIRECT_URI
 ENV OAUTH_REDIRECT_URI=$OAUTH_REDIRECT_URI
 
+# Build de l'application
+RUN npm run build
+
+
+# Étape 2 : image de production
+FROM node:18-slim
+
+# Copier les fichiers nécessaires
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/email-templates ./email-templates
+COPY --from=builder /app/next.config.js ./next.config.js
+
+# Variables d'environnement par défaut (à surcharger en production)
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Arguments de build pour les variables de base de données
+ARG DB_HOST
+ENV DB_HOST=$DB_HOST
+
+ARG DB_USER
+ENV DB_USER=$DB_USER
+
+ARG DB_PORT
+ENV DB_PORT=$DB_PORT
+
+ARG DB_PASSWORD
+ENV DB_PASSWORD=$DB_PASSWORD
+
+ARG DB_NAME
+ENV DB_NAME=$DB_NAME
+
+ARG STRIPE_SECRET_KEY
+ENV STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
+
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+ARG STRIPE_WEBHOOK_SECRET
+ENV STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
+
+ARG JWT_SECRET
+ENV JWT_SECRET=$JWT_SECRET
+
+ARG NEXTAUTH_SECRET
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+
+ARG NEXTAUTH_URL
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+
+ARG OAUTH_CLIENT_ID
+ENV OAUTH_CLIENT_ID=$OAUTH_CLIENT_ID
+
+ARG OAUTH_CLIENT_SECRET
+ENV OAUTH_CLIENT_SECRET=$OAUTH_CLIENT_SECRET
+
+ARG OAUTH_ISSUER
+ENV OAUTH_ISSUER=$OAUTH_ISSUER
+
+ARG OAUTH_REDIRECT_URI
+ENV OAUTH_REDIRECT_URI=$OAUTH_REDIRECT_URI
 
 # Rendre le script start.sh exécutable
 RUN chmod +x start.sh
 
-# Build de l'application
-RUN npm run build
+
 
 EXPOSE 8080
+
+# Scripts de démarrage et seed
+COPY start.sh ./
+COPY seed-production.js ./
+RUN chmod +x start.sh
 
 CMD ["./start.sh"]
