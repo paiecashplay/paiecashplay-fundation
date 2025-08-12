@@ -33,7 +33,7 @@ function getOAuthConfig() {
     console.warn('⚠️  Configuration OAuth localhost détectée en production, utilisation des valeurs par défaut')
     return {
       issuer: 'https://auth.paiecashplay.com',
-      redirectUri: process.env.OAUTH_REDIRECT_URI?.replace('localhost:3001', 'votre-app-cloud-run.com') || process.env.OAUTH_REDIRECT_URI
+      redirectUri: process.env.OAUTH_REDIRECT_URI?.replace('localhost:3001', 'fundation.paiecashplay.com') || process.env.OAUTH_REDIRECT_URI
     }
   }
   
@@ -51,13 +51,12 @@ export function generateState(): string {
 // Construire l'URL d'autorisation
 export function getAuthorizationUrl(state: string, forceLogin = false): string {
   const config = getOAuthConfig()
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: process.env.OAUTH_CLIENT_ID!,
-    redirect_uri: config.redirectUri,
-    scope: 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read',
-    state
-  })
+  const params = new URLSearchParams()
+  params.set('response_type', 'code')
+  params.set('client_id', process.env.OAUTH_CLIENT_ID!)
+  params.set('redirect_uri', config.redirectUri || '')
+  params.set('scope', 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read')
+  params.set('state', state)
   
   if (forceLogin) {
     params.set('prompt', 'login')

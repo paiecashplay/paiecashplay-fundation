@@ -17,6 +17,6 @@ ENV OAUTH_REDIRECT_URI=https://fundation.paiecashplay.com/api/auth/callback
 # Build de l'application
 RUN npm run build
 
-EXPOSE 3000
+EXPOSE 8080
 
 CMD ["npm", "start"]
