@@ -121,8 +121,8 @@ export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
 }
 
 export async function addClubMember(user: any, memberData: {
-  email: string
-  password: string
+  email?: string
+  password?: string
   firstName: string
   lastName: string
   country: string
@@ -130,6 +130,9 @@ export async function addClubMember(user: any, memberData: {
   metadata?: {
     position?: string
     licenseNumber?: string
+    height?: string
+    weight?: string
+    birthDate?: string
   }
 }): Promise<ClubMember> {
   if (!user?.access_token) {

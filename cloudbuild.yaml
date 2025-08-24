@@ -57,6 +57,7 @@ steps:
         DB_PORT=${_DB_PORT},
         DB_PASSWORD=${_DB_PASSWORD},
         DB_NAME=${_DB_NAME},
+        DATABASE_URL=${_DATABASE_URL},
         JWT_SECRET=${_JWT_SECRET},
         NEXTAUTH_SECRET=${_NEXTAUTH_SECRET},
         NEXTAUTH_URL=${_NEXTAUTH_URL},

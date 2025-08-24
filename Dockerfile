@@ -72,6 +72,12 @@ RUN npm run build
 # Étape 2 : image de production
 FROM node:18-slim
 
+
+WORKDIR /app
+
+# Installer les dépendances système nécessaires à Prisma
+RUN apt-get update -y && apt-get install -y openssl
+
 # Copier les fichiers nécessaires
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./

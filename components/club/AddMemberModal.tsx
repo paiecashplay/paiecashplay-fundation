@@ -262,7 +262,10 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
     lastName: '',
     country: 'FR',
     phone: '',
-    position: ''
+    position: '',
+    height: '',
+    weight: '',
+    birthDate: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -274,16 +277,6 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
     setError(null)
 
     // Validation des champs requis
-    if (!formData.email.trim()) {
-      setError('L\'email est requis')
-      setLoading(false)
-      return
-    }
-    if (!formData.password.trim()) {
-      setError('Le mot de passe est requis')
-      setLoading(false)
-      return
-    }
     if (!formData.firstName.trim()) {
       setError('Le prénom est requis')
       setLoading(false)
@@ -294,7 +287,7 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
       setLoading(false)
       return
     }
-    if (formData.password.length < 8) {
+    if (formData.email.trim() && formData.password.trim() && formData.password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères')
       setLoading(false)
       return
@@ -302,14 +295,17 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
 
     try {
       const memberData = {
-        email: formData.email.trim(),
-        password: formData.password,
+        email: formData.email.trim() || undefined,
+        password: formData.password.trim() || undefined,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         country: formData.country,
         phone: formData.phone.trim() || undefined,
         metadata: {
-          position: formData.position || undefined
+          position: formData.position || undefined,
+          height: formData.height.trim() || undefined,
+          weight: formData.weight.trim() || undefined,
+          birthDate: formData.birthDate || undefined
         }
       }
 
@@ -322,7 +318,10 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
         lastName: '',
         country: 'FR',
         phone: '',
-        position: ''
+        position: '',
+        height: '',
+        weight: '',
+        birthDate: ''
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'ajout')
@@ -418,7 +417,7 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
 
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                      Email *
+                      Email <span className="text-gray-400">(optionnel)</span>
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -427,7 +426,6 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        required
                         className="pl-10 h-12 border-2 border-gray-200 focus:border-[#4FBA73] focus:ring-0 rounded-xl"
                         placeholder="email@exemple.com"
                       />
@@ -436,7 +434,7 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
 
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                      Mot de passe *
+                      Mot de passe <span className="text-gray-400">(optionnel)</span>
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -445,7 +443,6 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
                         onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                        required
                         minLength={8}
                         className="pl-10 pr-10 h-12 border-2 border-gray-200 focus:border-[#4FBA73] focus:ring-0 rounded-xl"
                         placeholder="••••••••"
@@ -491,7 +488,7 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
                   <h3 className="text-xl font-semibold text-gray-900">Informations sportives</h3>
                 </div>
 
-                <div className="max-w-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="position" className="text-sm font-medium text-gray-700">
                       Poste
@@ -521,6 +518,45 @@ export default function AddMemberModal({ isOpen, onClose, onAdd }: AddMemberModa
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="height" className="text-sm font-medium text-gray-700">
+                      Taille <span className="text-gray-400">(optionnel)</span>
+                    </Label>
+                    <Input
+                      id="height"
+                      value={formData.height}
+                      onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
+                      className="h-12 border-2 border-gray-200 focus:border-[#4FBA73] focus:ring-0 rounded-xl"
+                      placeholder="Ex: 175cm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="weight" className="text-sm font-medium text-gray-700">
+                      Poids <span className="text-gray-400">(optionnel)</span>
+                    </Label>
+                    <Input
+                      id="weight"
+                      value={formData.weight}
+                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                      className="h-12 border-2 border-gray-200 focus:border-[#4FBA73] focus:ring-0 rounded-xl"
+                      placeholder="Ex: 70kg"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate" className="text-sm font-medium text-gray-700">
+                      Date de naissance <span className="text-gray-400">(optionnel)</span>
+                    </Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={formData.birthDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, birthDate: e.target.value }))}
+                      className="h-12 border-2 border-gray-200 focus:border-[#4FBA73] focus:ring-0 rounded-xl"
+                    />
                   </div>
                 </div>
               </div>

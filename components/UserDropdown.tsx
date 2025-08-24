@@ -26,7 +26,19 @@ export default function UserDropdown() {
 
   if (!user) return null;
 
-  const fullName = user.name || 'Utilisateur';
+  // Déterminer le nom à afficher selon le type d'utilisateur
+  const getDisplayName = () => {
+    const isIndividualUser = ['donor', 'player', 'affiliate'].includes(user.user_type);
+    
+    if (isIndividualUser) {
+      return user.name || 'Utilisateur';
+    } else {
+      // Pour les organisations (club, federation, company, etc.)
+      return user.metadata?.organizationName || user.name || 'Organisation';
+    }
+  };
+
+  const fullName = getDisplayName();
   const initials = fullName
     .split(' ')
     .map(name => name[0])
@@ -56,7 +68,12 @@ export default function UserDropdown() {
           <div className="px-4 py-2 border-b border-gray-100">
             <p className="text-sm font-medium text-gray-900">{fullName}</p>
             <p className="text-xs text-gray-500">{user.email}</p>
-            <p className="text-xs text-blue-600 capitalize">{user.user_type}</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-blue-600 capitalize">{user.user_type}</p>
+              {user.metadata?.organizationName && !['donor', 'player', 'affiliate'].includes(user.user_type) && (
+                <p className="text-xs text-gray-400">Organisation</p>
+              )}
+            </div>
           </div>
 
           <div className="py-1">
@@ -69,14 +86,16 @@ export default function UserDropdown() {
               Mon profil
             </Link>
 
-            <Link
-              href="/dashboard"
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              onClick={() => setIsOpen(false)}
-            >
-              <User className="w-4 h-4 mr-2" />
-              Dashboard
-            </Link>
+            {user.user_type === 'club' && (
+              <Link
+                href="/dashboard"
+                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsOpen(false)}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Dashboard
+              </Link>
+            )}
 
             {isAdmin && (
               <Link

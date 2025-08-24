@@ -9,7 +9,11 @@ export interface User {
   family_name: string
   picture?: string
   user_type: 'player' | 'club' | 'federation' | 'donor' | 'company' | 'affiliate' | 'admin'
-  metadata?: any
+  metadata?: {
+    organizationName?: string
+    federation?: string
+    [key: string]: any
+  }
   access_token?: string
   refresh_token?: string
 }
