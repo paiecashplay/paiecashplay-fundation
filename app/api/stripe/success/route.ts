@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PrismaClient } from '@prisma/client';
+import { getOAuthConfig } from '@/lib/auth';
 
 
 const prisma = new PrismaClient();
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     // Si l'utilisateur n'est pas anonyme et a un donorId, mettre à jour son statut de donateur
     if (metadata.isAnonymous === 'false' && metadata.donorId) {
       try {
-        const response = await fetch(`${process.env.OAUTH_ISSUER}/api/users/${metadata.donorId}/add-donor-role`, {
+        const response = await fetch(`${getOAuthConfig().issuer}/api/users/${metadata.donorId}/add-donor-role`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getOAuthConfig } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -27,7 +28,7 @@ export async function GET() {
       const donorsWithInfo = await Promise.all(
         topDonors.map(async (donor) => {
           try {
-            const oauthResponse = await fetch(`${process.env.OAUTH_ISSUER}/api/public/players`)
+            const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
             const playersData = await oauthResponse.json()
             const player = playersData.players?.find((p: any) => p.id === donor.joueur_oauth_id)
             

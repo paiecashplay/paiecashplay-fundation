@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Search, MapPin, Users, Globe, ArrowLeft, ChevronDown } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
+import { getOAuthConfig } from '@/lib/auth';
 import { useToastContext } from '@/components/ToastProvider';
 
 interface Child {
@@ -54,8 +55,6 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToastContext();
 
-  const getOAuthBaseUrl = () => process.env.OAUTH_ISSUER || 'http://localhost:3000';
-
   // Charger les pays disponibles
   useEffect(() => {
     if (isOpen && step === 'country') {
@@ -77,7 +76,7 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const fetchCountries = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${getOAuthBaseUrl()}/api/public/countries`);
+      const response = await fetch(`${getOAuthConfig().issuer}/api/public/countries`);
       const result = await response.json();
       
       if (result.countries) {
@@ -103,7 +102,7 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const fetchChildrenByCountry = async (countryCode: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${getOAuthBaseUrl()}/api/public/players/by-country?country=${countryCode}&limit=50`);
+      const response = await fetch(`${getOAuthConfig().issuer}/api/public/players/by-country?country=${countryCode}&limit=50`);
       const result = await response.json();
       
       if (result.players && result.players.length > 0) {

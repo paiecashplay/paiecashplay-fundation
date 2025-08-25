@@ -1,8 +1,4 @@
-import { getCurrentUser } from '@/lib/auth'
-
-const getOAuthBaseUrl = () => {
-  return process.env.OAUTH_ISSUER || 'http://localhost:3000'
-}
+import { getOAuthConfig,getCurrentUser } from '@/lib/auth';
 
 class PaieCashAuthAPI {
   constructor(private baseUrl: string, private accessToken?: string) {}
@@ -61,7 +57,7 @@ export async function markUserAsDonor(userId: string, donorData: {
     throw new Error(error)
   }
 
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     const result = await api.makeRequest(`/api/oauth/users/${userId}/donor`, {
@@ -88,7 +84,7 @@ export async function markUserAsDonor(userId: string, donorData: {
 
 export async function checkUserDonorStatus(userId: string) {
   try {
-    const response = await fetch(`${getOAuthBaseUrl()}/api/public/players`)
+    const response = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
     const result = await response.json()
     
     const user = result.players?.find((p: any) => p.id === userId)

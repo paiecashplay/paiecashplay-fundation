@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-
-const getOAuthBaseUrl = () => {
-  return process.env.OAUTH_ISSUER || 'http://localhost:3000'
-}
+import { getOAuthConfig, getCurrentUser } from '@/lib/auth';
 
 class PaieCashAuthAPI {
   constructor(private baseUrl: string, private accessToken?: string) {}
@@ -64,7 +60,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+    const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
     
     try {
       const result = await api.makeRequest(`/api/oauth/users/${user.sub}`)
@@ -115,7 +111,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const updateData = await request.json()
-    const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+    const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
     
     try {
       const result = await api.makeRequest(`/api/oauth/users/${user.sub}`, {

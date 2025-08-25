@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
+import { getOAuthConfig } from '@/lib/auth';
 
 export async function GET() {
   try {
     // Utiliser l'API publique OAuth (sans authentification)
-    const oauthResponse = await fetch(`${process.env.OAUTH_ISSUER}/api/public/players?limit=50`, {
+    const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players?limit=50`, {
       headers: {
         'Content-Type': 'application/json'
       }

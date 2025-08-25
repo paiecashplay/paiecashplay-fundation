@@ -29,7 +29,7 @@ export interface AuthTokens {
 const JWT_SECRET = process.env.JWT_SECRET!
 
 // Configuration dynamique basée sur l'environnement
-function getOAuthConfig() {
+export function getOAuthConfig() {
   const isProduction = process.env.NODE_ENV === 'production'
   
   // Si on est en production et qu'on a encore localhost, forcer la config production

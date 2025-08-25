@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { getOAuthConfig } from '@/lib/auth';
 
-const getOAuthBaseUrl = () => {
-  return process.env.OAUTH_ISSUER || 'http://localhost:3000'
-}
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -19,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const playerId = params.id
 
     // Récupérer les infos du joueur depuis l'API OAuth publique
-    const oauthResponse = await fetch(`${getOAuthBaseUrl()}/api/public/players`)
+    const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
     
     if (!oauthResponse.ok) {
       throw new Error('Erreur lors de la récupération des joueurs')
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           let donorName = 'Donateur anonyme'
           if (donation.donateur_id && !donation.is_anonymous) {
             try {
-              const donorResponse = await fetch(`${getOAuthBaseUrl()}/api/public/players`)
+              const donorResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
               const donorsData = await donorResponse.json()
               const donor = donorsData.players?.find((p: any) => p.id === donation.donateur_id)
               if (donor) {

@@ -1,8 +1,4 @@
-import { getCurrentUser } from '@/lib/auth'
-
-const getOAuthBaseUrl = () => {
-  return process.env.OAUTH_ISSUER || 'http://localhost:3000'
-}
+import { getOAuthConfig, getCurrentUser } from '@/lib/auth';
 
 export interface ClubMember {
   id: string
@@ -107,7 +103,7 @@ export async function getClubMembers(clubId: string): Promise<ClubMember[]> {
   // Utiliser directement l'ID du club depuis l'utilisateur connecté
   const userClubId = user.sub
   
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     const result = await api.makeRequest(`/api/oauth/clubs/${userClubId}/members`)
@@ -147,7 +143,7 @@ export async function addClubMember(user: any, memberData: {
   // L'utilisateur connecté est le club lui-même (user.sub = club ID)
   const userClubId = user.sub
   
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     console.log('📝 Données membre à ajouter:', memberData)
@@ -184,7 +180,7 @@ export async function updateClubMember(user: any, memberId: string, memberData: 
   }
 
   const userClubId = user.sub
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     const result = await api.makeRequest(`/api/oauth/clubs/${userClubId}/members/${memberId}`, {
@@ -211,7 +207,7 @@ export async function deleteClubMember(user: any, memberId: string): Promise<voi
   }
 
   const userClubId = user.sub
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     await api.makeRequest(`/api/oauth/clubs/${userClubId}/members/${memberId}`, {
@@ -236,7 +232,7 @@ export async function getClubStats(clubId: string): Promise<ClubStats> {
   // Utiliser directement l'ID du club depuis l'utilisateur connecté
   const userClubId = user.sub
   
-  const api = new PaieCashAuthAPI(getOAuthBaseUrl(), user.access_token)
+  const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
   
   try {
     const result = await api.makeRequest(`/api/oauth/stats/clubs/${userClubId}`)
