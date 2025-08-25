@@ -54,7 +54,7 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToastContext();
 
-  const getOAuthBaseUrl = () => process.env.NEXT_PUBLIC_OAUTH_ISSUER || 'http://localhost:3000';
+  const getOAuthBaseUrl = () => process.env.OAUTH_ISSUER || 'http://localhost:3000';
 
   // Charger les pays disponibles
   useEffect(() => {
