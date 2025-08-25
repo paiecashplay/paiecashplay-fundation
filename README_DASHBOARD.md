@@ -58,8 +58,8 @@ Le dashboard club permet aux clubs de gérer leurs membres (joueurs) et de visua
 # OAuth Configuration
 OAUTH_CLIENT_ID=your_client_id
 OAUTH_CLIENT_SECRET=your_client_secret
-OAUTH_ISSUER=http://localhost:3000  # ou https://auth.paiecashplay.com
-OAUTH_REDIRECT_URI=http://localhost:3001/api/auth/callback
+NEXT_PUBLIC_OAUTH_ISSUER=http://localhost:3000  # ou https://auth.paiecashplay.com
+NEXT_PUBLIC_OAUTH_REDIRECT_URI=http://localhost:3001/api/auth/callback
 
 # Scopes requis
 # clubs:read clubs:write clubs:members users:write players:read

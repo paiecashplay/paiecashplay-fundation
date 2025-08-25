@@ -33,17 +33,17 @@ export function getOAuthConfig() {
   const isProduction = process.env.NODE_ENV === 'production'
   
   // Si on est en production et qu'on a encore localhost, forcer la config production
-  if (isProduction && process.env.OAUTH_ISSUER?.includes('localhost')) {
+  if (isProduction && process.env.NEXT_PUBLIC_OAUTH_ISSUER?.includes('localhost')) {
     console.warn('⚠️  Configuration OAuth localhost détectée en production, utilisation des valeurs par défaut')
     return {
       issuer: 'https://auth.paiecashplay.com',
-      redirectUri: process.env.OAUTH_REDIRECT_URI?.replace('localhost:3001', 'fundation.paiecashplay.com') || process.env.OAUTH_REDIRECT_URI
+      redirectUri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI?.replace('localhost:3001', 'fundation.paiecashplay.com') || process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI
     }
   }
-  
+  console.log("Issue ",process.env)
   return {
-    issuer: process.env.OAUTH_ISSUER!,
-    redirectUri: process.env.OAUTH_REDIRECT_URI!
+    issuer: process.env.NEXT_PUBLIC_OAUTH_ISSUER!,
+    redirectUri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!
   }
 }
 
@@ -71,13 +71,13 @@ export function getAuthorizationUrl(state: string, forceLogin = false): string {
 
 // Échanger le code contre des tokens
 export async function exchangeCodeForTokens(code: string): Promise<AuthTokens> {
-  const response = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/token`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      redirect_uri: process.env.OAUTH_REDIRECT_URI!,
+      redirect_uri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!,
       client_id: process.env.OAUTH_CLIENT_ID!,
       client_secret: process.env.OAUTH_CLIENT_SECRET!
     })
@@ -92,7 +92,7 @@ export async function exchangeCodeForTokens(code: string): Promise<AuthTokens> {
 
 // Récupérer les informations utilisateur
 export async function getUserInfo(accessToken: string): Promise<User> {
-  const response = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/userinfo`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/userinfo`, {
     headers: { 'Authorization': `Bearer ${accessToken}` }
   })
   
@@ -125,7 +125,7 @@ export function verifySession(token: string): User | null {
 
 // Rafraîchir le token d'accès
 export async function refreshAccessToken(refreshToken: string): Promise<AuthTokens> {
-  const response = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/token`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -161,7 +161,7 @@ export async function getCurrentUser(): Promise<User | null> {
     if (user.refresh_token) {
       try {
         // Test rapide du token actuel
-        const testResponse = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/userinfo`, {
+        const testResponse = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/userinfo`, {
           headers: { 'Authorization': `Bearer ${user.access_token}` }
         })
         
@@ -186,7 +186,7 @@ export async function getCurrentUser(): Promise<User | null> {
 // Révoquer un token OAuth
 export async function revokeToken(token: string, tokenType: 'access_token' | 'refresh_token' = 'access_token'): Promise<boolean> {
   try {
-    const response = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/revoke`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -206,5 +206,5 @@ export async function revokeToken(token: string, tokenType: 'access_token' | 're
 
 // URL de déconnexion
 export function getLogoutUrl(): string {
-  return `${process.env.OAUTH_ISSUER}/api/auth/logout`
+  return `${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/logout`
 }

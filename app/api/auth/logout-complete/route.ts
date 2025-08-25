@@ -18,7 +18,7 @@ export async function GET() {
   cookieStore.delete('auth-token')
   
   // Rediriger vers la page d'accueil avec marqueur de force login
-  const response = NextResponse.redirect(new URL('/?logged_out=true', process.env.OAUTH_REDIRECT_URI!.replace('/api/auth/callback', '')))
+  const response = NextResponse.redirect(new URL('/?logged_out=true', process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!.replace('/api/auth/callback', '')))
   
   return response
 }

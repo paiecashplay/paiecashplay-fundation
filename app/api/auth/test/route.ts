@@ -10,7 +10,7 @@ export async function GET() {
     }
     
     // Test de l'API OAuth
-    const testResponse = await fetch(`${process.env.OAUTH_ISSUER}/api/auth/userinfo`, {
+    const testResponse = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/userinfo`, {
       headers: {
         'Authorization': `Bearer ${user.access_token}`,
         'Content-Type': 'application/json'
