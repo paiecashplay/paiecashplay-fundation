@@ -6,5 +6,5 @@ export function getDatabaseUrl(): string {
   const password = process.env.DB_PASSWORD || ''
   const name = process.env.DB_NAME || 'bd-donation'
   
-  return `mysql://${user}:${password}@${host}:${port}/${name}`
+  return `postgresql://${user}:${password}@${host}:${port}/${name}`
 }
