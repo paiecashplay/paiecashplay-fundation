@@ -5,17 +5,17 @@ export async function GET() {
   try {
     const user = await getCurrentUser()
     
-    if (!user || user.user_type !== 'club') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
     if (!user.access_token) {
-      return NextResponse.json({ error: 'No access token available' }, { status: 401 })
+      return NextResponse.json({ error: 'Token d\'accès manquant' }, { status: 401 })
     }
 
-    // Récupérer les membres depuis l'API OAuth
+    // Récupérer tous les joueurs depuis l'API OAuth
     const config = getOAuthConfig()
-    const response = await fetch(`${config.issuer}/api/oauth/clubs/${user.sub}/members`, {
+    const response = await fetch(`${config.issuer}/api/oauth/players`, {
       headers: {
         'Authorization': `Bearer ${user.access_token}`,
         'Content-Type': 'application/json'
@@ -27,11 +27,11 @@ export async function GET() {
     }
 
     const result = await response.json()
-    const players = result.members || []
+    const players = result.players || []
     
     return NextResponse.json(players)
   } catch (error) {
-    console.error('Error fetching club players:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Erreur récupération joueurs:', error)
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

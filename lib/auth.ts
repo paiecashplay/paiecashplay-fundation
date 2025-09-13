@@ -32,18 +32,22 @@ const JWT_SECRET = process.env.JWT_SECRET!
 export function getOAuthConfig() {
   const isProduction = process.env.NODE_ENV === 'production'
   
+  // Utiliser APP_URL pour construire l'URL de redirection
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+  const oauthIssuer = process.env.OAUTH_ISSUER || 'http://localhost:3000'
+  
   // Si on est en production et qu'on a encore localhost, forcer la config production
-  if (isProduction && process.env.NEXT_PUBLIC_OAUTH_ISSUER?.includes('localhost')) {
+  if (isProduction && oauthIssuer.includes('localhost')) {
     console.warn('⚠️  Configuration OAuth localhost détectée en production, utilisation des valeurs par défaut')
     return {
       issuer: 'https://auth.paiecashplay.com',
-      redirectUri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI?.replace('localhost:3001', 'fundation.paiecashplay.com') || process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI
+      redirectUri: 'https://fundation.paiecashplay.com/api/auth/callback'
     }
   }
-  console.log("Issue ",process.env)
+  
   return {
-    issuer: process.env.NEXT_PUBLIC_OAUTH_ISSUER!,
-    redirectUri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!
+    issuer: oauthIssuer,
+    redirectUri: process.env.OAUTH_REDIRECT_URI || `${appUrl}/api/auth/callback`
   }
 }
 
@@ -71,33 +75,57 @@ export function getAuthorizationUrl(state: string, forceLogin = false): string {
 
 // Échanger le code contre des tokens
 export async function exchangeCodeForTokens(code: string): Promise<AuthTokens> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/token`, {
+  const config = getOAuthConfig()
+  console.log('Config OAuth:', { issuer: config.issuer, redirectUri: config.redirectUri })
+  
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: config.redirectUri,
+    client_id: process.env.OAUTH_CLIENT_ID!,
+    client_secret: process.env.OAUTH_CLIENT_SECRET!
+  })
+  
+  console.log('Paramètres token exchange:', {
+    grant_type: 'authorization_code',
+    code: code.substring(0, 10) + '...',
+    redirect_uri: config.redirectUri,
+    client_id: process.env.OAUTH_CLIENT_ID
+  })
+  
+  const response = await fetch(`${config.issuer}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!,
-      client_id: process.env.OAUTH_CLIENT_ID!,
-      client_secret: process.env.OAUTH_CLIENT_SECRET!
-    })
+    body
   })
   
   if (!response.ok) {
-    throw new Error('Failed to exchange code for tokens')
+    const errorText = await response.text()
+    console.error('Erreur token exchange:', response.status, errorText)
+    throw new Error(`Failed to exchange code for tokens: ${response.status} ${errorText}`)
   }
   
-  return response.json()
+  const tokens = await response.json()
+  console.log('Tokens reçus:', { 
+    access_token: tokens.access_token ? tokens.access_token.substring(0, 20) + '...' : 'missing',
+    token_type: tokens.token_type,
+    expires_in: tokens.expires_in
+  })
+  
+  return tokens
 }
 
 // Récupérer les informations utilisateur
 export async function getUserInfo(accessToken: string): Promise<User> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/userinfo`, {
+  const config = getOAuthConfig()
+  const response = await fetch(`${config.issuer}/api/auth/userinfo`, {
     headers: { 'Authorization': `Bearer ${accessToken}` }
   })
   
   if (!response.ok) {
-    throw new Error('Failed to get user info')
+    const errorText = await response.text()
+    console.error('Erreur getUserInfo:', response.status, errorText)
+    throw new Error(`Failed to get user info: ${response.status} ${errorText}`)
   }
   
   return response.json()
@@ -125,7 +153,8 @@ export function verifySession(token: string): User | null {
 
 // Rafraîchir le token d'accès
 export async function refreshAccessToken(refreshToken: string): Promise<AuthTokens> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/token`, {
+  const config = getOAuthConfig()
+  const response = await fetch(`${config.issuer}/api/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -161,7 +190,8 @@ export async function getCurrentUser(): Promise<User | null> {
     if (user.refresh_token) {
       try {
         // Test rapide du token actuel
-        const testResponse = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/userinfo`, {
+        const config = getOAuthConfig()
+        const testResponse = await fetch(`${config.issuer}/api/auth/userinfo`, {
           headers: { 'Authorization': `Bearer ${user.access_token}` }
         })
         
@@ -186,7 +216,8 @@ export async function getCurrentUser(): Promise<User | null> {
 // Révoquer un token OAuth
 export async function revokeToken(token: string, tokenType: 'access_token' | 'refresh_token' = 'access_token'): Promise<boolean> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/revoke`, {
+    const config = getOAuthConfig()
+    const response = await fetch(`${config.issuer}/api/auth/revoke`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -206,5 +237,6 @@ export async function revokeToken(token: string, tokenType: 'access_token' | 're
 
 // URL de déconnexion
 export function getLogoutUrl(): string {
-  return `${process.env.NEXT_PUBLIC_OAUTH_ISSUER}/api/auth/logout`
+  const config = getOAuthConfig()
+  return `${config.issuer}/api/auth/logout`
 }

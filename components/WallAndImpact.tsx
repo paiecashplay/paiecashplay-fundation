@@ -271,9 +271,13 @@ export default function WallAndImpact({ donationPacksRef }: WallAndImpactProps) 
                     </div>
                   </div>
                   
-                  <h4 className="font-bold text-lg group-hover:text-gray-900 transition-colors">
+                  <a 
+                    href={`/player/${donor.id}`}
+                    className="font-bold text-lg group-hover:text-[#4FBA73] transition-colors block"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {donor.prenom} {donor.nom?.charAt(0)}.
-                  </h4>
+                  </a>
                   <p className={`${levelInfo.text} font-medium mb-2`}>Champion {levelInfo.level}</p>
                   <p className="text-sm text-gray-600 mb-3">€{donor.total_dons} donnés</p>
                   

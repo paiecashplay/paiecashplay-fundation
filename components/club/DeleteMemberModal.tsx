@@ -4,7 +4,18 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, X, Loader2 } from 'lucide-react'
-import type { ClubMember } from '@/lib/services/clubService'
+
+interface ClubMember {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  metadata?: {
+    position?: string
+    jerseyNumber?: number
+    status?: string
+  }
+}
 
 interface DeleteMemberModalProps {
   isOpen: boolean

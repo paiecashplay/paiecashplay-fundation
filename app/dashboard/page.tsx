@@ -2,7 +2,34 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import type { ClubMember, ClubStats } from '@/lib/services/clubService'
+
+interface ClubMember {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  metadata?: {
+    position?: string
+    jerseyNumber?: number
+    status?: string
+  }
+}
+
+interface ClubStats {
+  totalMembers: number
+  membersByStatus?: {
+    active?: number
+    injured?: number
+    suspended?: number
+  }
+  averageAge?: number
+  membersByPosition?: {
+    forward?: number
+    defender?: number
+    midfielder?: number
+    goalkeeper?: number
+  }
+}
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -67,10 +94,21 @@ export default function Dashboard() {
   }
 
   const handleAddMember = async (memberData: any) => {
-    const { addClubMember } = await import('@/lib/services/clubService')
-    
     try {
-      const newMember = await addClubMember(user, memberData)
+      const response = await fetch('/api/club/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(memberData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Erreur lors de l\'ajout')
+      }
+
+      const { data: newMember } = await response.json()
       setMembers(prev => [...prev, newMember])
       setIsAddModalOpen(false)
       toast.success('Joueur ajouté', `${newMember.firstName} ${newMember.lastName} a été ajouté à l'équipe`)
@@ -94,8 +132,14 @@ export default function Dashboard() {
 
   const handleDeleteMember = async (memberId: string) => {
     try {
-      const { deleteClubMember } = await import('@/lib/services/clubService')
-      await deleteClubMember(user, memberId)
+      const response = await fetch(`/api/club/members/${memberId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Erreur lors de la suppression')
+      }
       setMembers(prev => prev.filter(m => m.id !== memberId))
       toast.success('Joueur supprimé', 'Le joueur a été supprimé de l\'équipe')
       // Recharger les stats

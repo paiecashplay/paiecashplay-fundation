@@ -8,6 +8,7 @@ import Footer from '@/components/layout/Footer'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToastContext } from '@/components/ToastProvider'
 import { User, Mail, Phone, MapPin, Calendar, Trophy, Edit3, Save, X, Building, Users, Globe, Shield } from 'lucide-react'
+import ProfilePictureUpload from '@/components/ProfilePictureUpload'
 
 interface ClubProfile {
   sub: string
@@ -16,6 +17,7 @@ interface ClubProfile {
   name: string
   given_name: string
   family_name: string
+  picture?: string
   phone_number?: string
   locale: string
   user_type: string
@@ -24,6 +26,7 @@ interface ClubProfile {
   updated_at: number
   metadata?: {
     clubName?: string
+    organizationName?: string
     league?: string
     stadium?: string
     founded?: string
@@ -54,10 +57,15 @@ export default function ProfilePage() {
       return
     }
 
-    if (user.user_type !== 'club') {
-      toast.error('Accès refusé', 'Cette page est réservée aux clubs')
-      router.push('/dashboard')
+    // Rediriger selon le type d'utilisateur
+    if (user.user_type === 'club') {
+      // Les clubs ont accès à cette page
+    } else if (user.user_type === 'player') {
+      // Rediriger les joueurs vers leur profil public
+      router.push(`/player/${user.sub}`)
       return
+    } else {
+      // Autres types d'utilisateurs : profil générique
     }
 
     loadProfile()
@@ -66,15 +74,28 @@ export default function ProfilePage() {
   const loadProfile = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/profile/club')
+      
+      // Charger les données utilisateur depuis l'API OAuth pour tous les types
+      // Ajouter un timestamp pour éviter le cache
+      const response = await fetch(`/api/auth/me?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Erreur lors du chargement du profil')
       }
       
-      const { data } = await response.json()
-      setProfile(data)
-      setEditForm(data)
+      const userData = await response.json()
+      const profileData = {
+        ...userData,
+        metadata: userData.metadata || {}
+      }
+      
+      setProfile(profileData as ClubProfile)
+      setEditForm(profileData as ClubProfile)
       toast.success('Profil chargé', 'Informations récupérées avec succès')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur de chargement'
@@ -97,20 +118,31 @@ export default function ProfilePage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      const response = await fetch('/api/profile/club', {
+      
+      // Sauvegarder via l'API OAuth pour tous les types d'utilisateurs
+      const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify({
+          given_name: editForm.given_name,
+          family_name: editForm.family_name,
+          phone_number: editForm.phone_number,
+          locale: editForm.locale,
+          metadata: editForm.metadata
+        })
       })
 
       if (!response.ok) {
         throw new Error('Erreur lors de la sauvegarde')
       }
 
-      const { data } = await response.json()
-      setProfile(data)
+      const { profile: updatedProfile } = await response.json()
+      
+      // Mettre à jour le profil avec les nouvelles données
+      setProfile(updatedProfile)
+      
       setEditing(false)
       toast.success('Profil mis à jour', 'Vos modifications ont été sauvegardées')
     } catch (error) {
@@ -172,83 +204,143 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <Header />
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header du profil */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-[#4FBA73] to-[#3da562] px-8 py-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mr-6">
-                  <Building className="w-10 h-10 text-white" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header du profil moderne */}
+        <div className="relative overflow-hidden rounded-3xl shadow-2xl mb-8">
+          {/* Background avec pattern */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#4FBA73] via-[#3da562] to-[#2d8f4f]">
+            <div className="absolute inset-0 bg-black/10">
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full -translate-x-48 -translate-y-48"></div>
+                <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/5 rounded-full translate-x-40 translate-y-40"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="relative px-8 py-12">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-6 lg:space-y-0">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-6 sm:space-y-0 sm:space-x-8">
+                {/* Photo de profil avec badge */}
+                <div className="relative">
+                  <div className="relative">
+                    <ProfilePictureUpload
+                      userId={profile.sub}
+                      currentPicture={profile.picture}
+                      onPictureUpdate={(url) => {
+                        setProfile(prev => prev ? {
+                          ...prev,
+                          picture: url
+                        } : null)
+                        // Pas de rechargement automatique
+                      }}
+                      size="lg"
+                    />
+                    {profile.email_verified && (
+                      <div className="absolute -bottom-2 -right-2 bg-blue-500 rounded-full p-2 shadow-lg border-4 border-white">
+                        <Shield className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">
+                
+                {/* Informations principales */}
+                <div className="text-white">
+                  <div className="mb-4">
                     {editing ? (
                       <input
                         type="text"
-                        value={editForm.metadata?.clubName || editForm.name || ''}
-                        onChange={(e) => handleInputChange('metadata.clubName', e.target.value)}
-                        className="bg-white/20 text-white placeholder-white/70 border-white/30 rounded-lg px-3 py-1 text-3xl font-bold"
-                        placeholder="Nom du club"
+                        value={editForm.metadata?.organizationName || editForm.metadata?.clubName || editForm.name || ''}
+                        onChange={(e) => handleInputChange(user?.user_type === 'club' ? 'metadata.clubName' : 'metadata.organizationName', e.target.value)}
+                        className="bg-white/20 text-white placeholder-white/70 border-2 border-white/30 rounded-xl px-4 py-3 text-4xl font-bold backdrop-blur-sm focus:border-white/60 focus:outline-none transition-all"
+                        placeholder={user?.user_type === 'club' ? 'Nom du club' : 'Nom de l\'organisation'}
                       />
                     ) : (
-                      profile.metadata?.clubName || profile.name
+                      <h1 className="text-4xl lg:text-5xl font-bold mb-2 leading-tight">
+                        {profile.metadata?.organizationName || profile.metadata?.clubName || profile.name || `${profile.given_name} ${profile.family_name}`.trim()}
+                      </h1>
                     )}
-                  </h1>
-                  <p className="text-white/80 text-lg mt-1">
+                    
                     {editing ? (
                       <input
                         type="text"
                         value={editForm.metadata?.league || ''}
                         onChange={(e) => handleInputChange('metadata.league', e.target.value)}
-                        className="bg-white/20 text-white placeholder-white/70 border-white/30 rounded-lg px-3 py-1"
-                        placeholder="Ligue/Division"
+                        className="bg-white/20 text-white placeholder-white/70 border-2 border-white/30 rounded-lg px-3 py-2 backdrop-blur-sm focus:border-white/60 focus:outline-none transition-all"
+                        placeholder={user?.user_type === 'club' ? 'Ligue/Division' : 'Type d\'organisation'}
                       />
                     ) : (
-                      profile.metadata?.league || 'Club de Football'
+                      <p className="text-xl text-white/90 font-medium">
+                        {profile.metadata?.league || (user?.user_type === 'club' ? 'Club de Football' : user?.user_type || 'Organisation')}
+                      </p>
                     )}
-                  </p>
+                  </div>
+                  
+                  {/* Badges et informations */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      <span className="text-sm font-medium">
+                        Membre depuis {new Date(profile.created_at * 1000).toLocaleDateString('fr-FR', {
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    
+                    {(profile.metadata?.country || profile.locale) && (
+                      <div className="flex items-center bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span className="text-sm font-medium">{profile.metadata?.country || profile.locale}</span>
+                      </div>
+                    )}
+                    
+                    {profile.metadata?.website && (
+                      <div className="flex items-center bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                        <Globe className="w-4 h-4 mr-2" />
+                        <a href={profile.metadata.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline">
+                          Site web
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
+              {/* Actions */}
               <div className="flex items-center space-x-3">
-                {profile.email_verified && (
-                  <div className="flex items-center bg-white/20 px-3 py-1 rounded-full">
-                    <Shield className="w-4 h-4 text-white mr-2" />
-                    <span className="text-white text-sm">Vérifié</span>
-                  </div>
-                )}
-                
                 {editing ? (
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-3">
                     <button
                       onClick={handleCancel}
-                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                      className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/30 hover:border-white/50"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="bg-white text-[#4FBA73] px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                      className="bg-white text-[#4FBA73] px-6 py-3 rounded-xl hover:bg-gray-100 transition-all duration-200 disabled:opacity-50 font-semibold shadow-lg"
                     >
                       {saving ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#4FBA73]"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4FBA73]"></div>
                       ) : (
-                        <Save className="w-4 h-4" />
+                        <div className="flex items-center">
+                          <Save className="w-5 h-5 mr-2" />
+                          Sauvegarder
+                        </div>
                       )}
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={handleEdit}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                    className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all duration-200 flex items-center backdrop-blur-sm border border-white/30 hover:border-white/50 font-semibold"
                   >
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Modifier
+                    <Edit3 className="w-5 h-5 mr-2" />
+                    Modifier le profil
                   </button>
                 )}
               </div>
@@ -256,17 +348,21 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
           {/* Informations principales */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="xl:col-span-4 space-y-8">
             {/* Informations de contact */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                <User className="w-5 h-5 mr-3 text-[#4FBA73]" />
-                Informations de contact
-              </h2>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
+              <div className="flex items-center mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-[#4FBA73] to-[#3da562] rounded-xl flex items-center justify-center mr-4">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Informations de contact
+                </h2>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   {editing ? (
@@ -307,7 +403,7 @@ export default function ProfilePage() {
                   {editing ? (
                     <input
                       type="text"
-                      value={editForm.metadata?.country || ''}
+                      value={editForm.metadata?.country || editForm.locale || ''}
                       onChange={(e) => handleInputChange('metadata.country', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
                       placeholder="Pays"
@@ -347,13 +443,17 @@ export default function ProfilePage() {
             </div>
 
             {/* Informations du club */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                <Trophy className="w-5 h-5 mr-3 text-[#4FBA73]" />
-                Informations du club
-              </h2>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
+              <div className="flex items-center mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-[#4FBA73] to-[#3da562] rounded-xl flex items-center justify-center mr-4">
+                  <Trophy className="w-6 h-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {user?.user_type === 'club' ? 'Informations du club' : 'Informations de l\'organisation'}
+                </h2>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Stade</label>
                   {editing ? (
@@ -414,7 +514,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 
-                <div className="md:col-span-2">
+                <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Entraîneur principal</label>
                   {editing ? (
                     <input
@@ -429,7 +529,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 
-                <div className="md:col-span-2">
+                <div className="lg:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   {editing ? (
                     <textarea
@@ -447,11 +547,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
+          {/* Sidebar moderne */}
+          <div className="space-y-8">
             {/* Statistiques */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Statistiques</h3>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                  <span className="text-white font-bold text-lg">📊</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Statistiques</h3>
+              </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Membre depuis</span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { DonationPacksRef } from '@/components/DonationPack';
 import { Header } from '@/components/layout/Header';
 import NotificationBanner from '@/components/NotificationBanner';
@@ -19,6 +19,18 @@ import DonationResume from '../components/DonationResume';
 
 export default function Home() {
   const donationPacksRef = useRef<DonationPacksRef>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Vérifier s'il y a une erreur d'authentification dans l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('auth_error');
+    if (error) {
+      setAuthError(error);
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleOpenChampionModal = () => {
     if (donationPacksRef.current) {
@@ -30,6 +42,21 @@ export default function Home() {
     <>    
     <div className="bg-gray-50">
       <Header />
+      
+      {/* Message d'erreur d'authentification */}
+      {authError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-4 mt-4 rounded relative">
+          <strong className="font-bold">Erreur d'authentification : </strong>
+          <span className="block sm:inline">{authError}</span>
+          <button
+            onClick={() => setAuthError(null)}
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+          >
+            <span className="sr-only">Fermer</span>
+            ×
+          </button>
+        </div>
+      )}
       {/* <NotificationBanner /> */}
       {/* Hero Section with Mobile Mockup */}
       <div className="relative">

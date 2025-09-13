@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { faAppleAlt, faIdCard, faTshirt } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 
 interface ChildSupported {
@@ -135,9 +136,12 @@ export default function ChildrenSupported() {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h4 className="font-bold text-lg">
+                    <Link 
+                      href={`/player/${child.id}`}
+                      className="font-bold text-lg hover:text-[#4FBA73] transition-colors cursor-pointer block"
+                    >
                       {child.prenom}, {child.age} ans
-                    </h4>
+                    </Link>
                     <p className="text-gray-600">{child.club_nom}, {child.pays_nom}</p>
                   </div>
                   <div className={config.iconColor}>

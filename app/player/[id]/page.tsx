@@ -1,556 +1,750 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Download, Mail, Phone, MapPin, Calendar, Trophy, Gift, FileText, User, Shield, Activity, Star, TrendingUp, Award, CheckCircle } from 'lucide-react'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import UserDropdown from '@/components/UserDropdown'
-import { useToastContext } from '@/components/ToastProvider'
-import Image from 'next/image'
-import Link from 'next/link'
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, MapPin, Calendar, Trophy, Award, Play, Image as ImageIcon, Download, Share2, Heart, Star, Edit3, Save, X } from 'lucide-react';
+import Link from 'next/link';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import MediaUploader from '@/components/MediaUploader';
+import ProfilePictureUpload from '@/components/ProfilePictureUpload';
+import { useToastContext } from '@/components/ToastProvider';
 
-interface PlayerDetails {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  country: string
-  phone?: string
-  isVerified: boolean
-  createdAt: string
+interface PlayerProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  picture?: string;
+  country: string;
+  phone?: string;
+  isVerified: boolean;
+  createdAt: string;
   metadata?: {
-    position?: string
-    licenseNumber?: string
-    jerseyNumber?: string
-    birthDate?: string
-    height?: string
-    weight?: string
-    status?: 'active' | 'injured' | 'suspended'
-  }
-  license?: {
-    id: string
-    packName: string
-    issuedAt: string
-    expiresAt: string
-    downloadUrl: string
-  }
-  donations: {
-    total: number
-    count: number
-    recent: Array<{
-      id: string
-      amount: number
-      date: string
-      donor: string
-    }>
-  }
+    position?: string;
+    height?: string;
+    weight?: string;
+    birthDate?: string;
+    jerseyNumber?: number;
+    bio?: string;
+    achievements?: string[];
+    socialMedia?: {
+      instagram?: string;
+      twitter?: string;
+      facebook?: string;
+    };
+  };
+  club?: {
+    id: string;
+    name: string;
+  };
+  federation?: {
+    id: string;
+    name: string;
+  };
+  stats?: {
+    totalLicenses: number;
+    activeLicenses: number;
+    totalDonationsReceived: number;
+  };
 }
 
-export default function PlayerPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
-  const { toast } = useToastContext()
-  const [player, setPlayer] = useState<PlayerDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface License {
+  id: string;
+  numero_licence: string;
+  date_emission: string;
+  date_expiration: string;
+  statut: string;
+  montant_paye: number;
+  devise: string;
+  pack: {
+    nom: string;
+    code: string;
+    prix: number;
+  };
+}
+
+interface PlayerMedia {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+}
+
+export default function PlayerProfilePage() {
+  const params = useParams();
+  const playerId = params.id as string;
+  const [player, setPlayer] = useState<PlayerProfile | null>(null);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [media, setMedia] = useState<PlayerMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'licenses' | 'media'>('overview');
+  const { toast } = useToastContext();
 
   useEffect(() => {
-    if (user && params.id) {
-      loadPlayerDetails()
+    if (playerId) {
+      fetchPlayerData();
     }
-  }, [user, params.id])
+  }, [playerId]);
 
-  const loadPlayerDetails = async () => {
+  const fetchPlayerData = async () => {
     try {
-      setLoading(true)
-      const response = await fetch(`/api/players/${params.id}`)
+      setLoading(true);
       
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement du joueur')
+      // Vérifier l'utilisateur connecté
+      try {
+        const userResponse = await fetch('/api/auth/me');
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setCurrentUser(userData);
+          
+          // Vérifier si peut éditer (joueur lui-même ou club propriétaire)
+          let canEditProfile = userData.sub === playerId;
+          
+          if (!canEditProfile && userData.user_type === 'club') {
+            // Vérifier si le joueur est membre du club
+            try {
+              const membersResponse = await fetch('/api/club/members');
+              if (membersResponse.ok) {
+                const membersData = await membersResponse.json();
+                const members = Array.isArray(membersData) ? membersData : (membersData.members || []);
+                canEditProfile = members.some((member: any) => member.id === playerId);
+              }
+            } catch (error) {
+              console.error('Erreur vérification membre:', error);
+            }
+          }
+          
+          setCanEdit(canEditProfile);
+        }
+      } catch (error) {
+        // Utilisateur non connecté, mode lecture seule
+        setCanEdit(false);
       }
       
-      const result = await response.json()
-      
-      if (result.success) {
-        setPlayer(result.data)
-        toast.success('Profil chargé', 'Informations du joueur récupérées')
-      } else {
-        throw new Error(result.error || 'Erreur de chargement')
+      // Fetch player profile
+      const playerResponse = await fetch(`/api/players/${playerId}`);
+      if (playerResponse.ok) {
+        const playerData = await playerResponse.json();
+        setPlayer(playerData);
+        setEditForm(playerData);
+        
+          // Forcer le rechargement des données utilisateur pour la photo
+        if (canEdit) {
+          try {
+            const userResponse = await fetch(`/api/auth/me?t=${Date.now()}`, {
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              if (userData.picture && userData.picture !== playerData.picture) {
+                setPlayer(prev => prev ? { ...prev, picture: userData.picture } : null);
+              }
+            }
+          } catch (error) {
+            // Ignore les erreurs de rechargement
+          }
+        }
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement'
-      setError(errorMessage)
-      toast.error('Erreur de chargement', errorMessage)
+
+      // Fetch player licenses
+      const licensesResponse = await fetch(`/api/players/${playerId}/licenses`);
+      if (licensesResponse.ok) {
+        const licensesData = await licensesResponse.json();
+        setLicenses(licensesData);
+      }
+
+      // Fetch player media
+      const mediaResponse = await fetch(`/api/players/${playerId}/media`);
+      if (mediaResponse.ok) {
+        const mediaData = await mediaResponse.json();
+        setMedia(mediaData);
+      }
+
+      // Fetch clubs list (seulement si peut éditer)
+      if (canEdit) {
+        const clubsResponse = await fetch('/api/club');
+        if (clubsResponse.ok) {
+          const clubsData = await clubsResponse.json();
+          setClubs(clubsData.clubs || []);
+        }
+      }
+
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+      toast.error('Erreur', 'Impossible de charger le profil du joueur');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleDownloadLicense = async () => {
-    if (!player?.license) {
-      toast.warning('Aucune licence', 'Ce joueur n\'a pas encore de licence active')
-      return
+  const getPositionIcon = (position?: string) => {
+    const icons: { [key: string]: string } = {
+      'goalkeeper': '🥅',
+      'defender': '🛡️',
+      'midfielder': '⚡',
+      'forward': '🎯'
+    };
+    return icons[position || ''] || '⚽';
+  };
+
+  const getPositionColor = (position?: string) => {
+    const colors: { [key: string]: string } = {
+      'goalkeeper': 'bg-yellow-100 text-yellow-800',
+      'defender': 'bg-blue-100 text-blue-800',
+      'midfielder': 'bg-purple-100 text-purple-800',
+      'forward': 'bg-red-100 text-red-800'
+    };
+    return colors[position || ''] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getCountryFlag = (countryCode: string) => {
+    const flags: { [key: string]: string } = {
+      'FR': '🇫🇷', 'CM': '🇨🇲', 'SN': '🇸🇳', 'CI': '🇨🇮', 'MA': '🇲🇦',
+      'DZ': '🇩🇿', 'TN': '🇹🇳', 'NG': '🇳🇬', 'GH': '🇬🇭', 'KE': '🇰🇪'
+    };
+    return flags[countryCode] || '🌍';
+  };
+
+  const calculateAge = (birthDate?: string) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
     }
-    
+    return age;
+  };
+
+  const handleSaveProfile = async () => {
     try {
-      toast.info('Téléchargement', 'Préparation du fichier PDF...')
-      const response = await fetch(player.license.downloadUrl)
+      const response = await fetch(`/api/players/${playerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editForm)
+      });
       
-      if (!response.ok) {
-        throw new Error('Erreur lors du téléchargement')
+      if (response.ok) {
+        const result = await response.json();
+        setPlayer(editForm);
+        setEditing(false);
+        toast.success('Profil mis à jour', 'Les informations ont été sauvegardées');
+      } else {
+        throw new Error('Erreur de sauvegarde');
       }
-      
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `license-${player.firstName || 'joueur'}-${player.lastName || 'inconnu'}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      
-      toast.success('Téléchargement réussi', 'La licence a été téléchargée')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur de téléchargement'
-      toast.error('Erreur de téléchargement', errorMessage)
-      console.error('Erreur téléchargement:', err)
+    } catch (error) {
+      toast.error('Erreur', 'Impossible de sauvegarder le profil');
     }
-  }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setEditForm((prev: any) => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setEditForm((prev: any) => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner size="lg" text="Chargement du profil..." />
       </div>
-    )
+    );
   }
 
-  if (error || !player) {
+  if (!player) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Joueur non trouvé'}</p>
-          <Button onClick={() => router.back()}>Retour</Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Joueur non trouvé</h1>
+          <Link href="/" className="text-[#4FBA73] hover:underline">
+            Retour à l'accueil
+          </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      {/* Header amélioré */}
-      <div className="relative bg-gradient-to-r from-[#4FBA73] via-[#4FBA73] to-[#3da562] shadow-2xl overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-48 translate-x-48"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-32 -translate-x-32"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="hover:opacity-80 transition-opacity">
-                <Image
-                  src="/logo.png"
-                  alt="PaieCash Logo"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10"
-                />
-              </Link>
-              <Button
-                onClick={() => router.back()}
-                variant="ghost"
-                className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/20"
-                size="lg"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Retour au dashboard
-              </Button>
-            </div>
-            <UserDropdown />
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#4FBA73] to-[#3da562] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Link href="/" className="inline-flex items-center text-white/80 hover:text-white mb-6">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Retour à l'accueil
+          </Link>
           
-          <div className="pb-8">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex items-center mb-6 lg:mb-0">
-                <div className="relative">
-                  <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mr-8 border border-white/30 shadow-2xl">
-                    <span className="text-white font-bold text-2xl">
-                      {player.firstName?.[0] || 'P'}{player.lastName?.[0] || 'J'}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-6 lg:space-y-0 lg:space-x-8">
+            {/* Avatar */}
+            <div className="relative">
+              {canEdit ? (
+                <ProfilePictureUpload
+                  userId={playerId}
+                  currentPicture={player.picture}
+                  onPictureUpdate={(url) => {
+                    setPlayer(prev => prev ? {
+                      ...prev,
+                      picture: url
+                    } : null)
+                    // Pas de rechargement automatique
+                  }}
+                  size="lg"
+                />
+              ) : (
+                <div className="w-48 h-48 rounded-full overflow-hidden bg-gradient-to-br from-[#4FBA73] to-[#3da562] flex items-center justify-center">
+                  {player.picture ? (
+                    <img
+                      src={player.picture}
+                      alt="Photo de profil"
+                      className="w-full h-full object-cover"
+                      key={player.picture} // Force le re-render
+                    />
+                  ) : (
+                    <span className="text-white text-6xl font-bold">
+                      {player.firstName.charAt(0)}
                     </span>
-                  </div>
-                  {player.isVerified && (
-                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
                   )}
                 </div>
-                <div>
-                  <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2">
-                    {player.firstName || 'Prénom'} {player.lastName || 'Nom'}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {player.metadata?.position && (
-                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2 text-sm font-semibold">
-                        <Trophy className="w-4 h-4 mr-2" />
-                        {player.metadata.position}
-                      </Badge>
-                    )}
-                    {player.metadata?.jerseyNumber && (
-                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2 text-sm font-semibold">
-                        <Shield className="w-4 h-4 mr-2" />
-                        #{player.metadata.jerseyNumber}
-                      </Badge>
-                    )}
-                    {player.metadata?.status && (
-                      <Badge className={`${
-                        player.metadata.status === 'active' 
-                          ? 'bg-green-500/20 text-green-100 border-green-400/30' 
-                          : 'bg-red-500/20 text-red-100 border-red-400/30'
-                      } backdrop-blur-sm px-4 py-2 text-sm font-semibold capitalize`}>
-                        <Activity className="w-4 h-4 mr-2" />
-                        {player.metadata.status}
-                      </Badge>
-                    )}
+              )}
+              {player.isVerified && (
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm">✓</span>
+                </div>
+              )}
+            </div>
+
+            {/* Info principale */}
+            <div className="flex-1">
+              <div className="flex items-center space-x-4 mb-4">
+                <h1 className="text-4xl font-bold">{player.firstName} {player.lastName}</h1>
+                {player.metadata?.jerseyNumber && (
+                  <span className="text-3xl font-bold bg-white/20 px-4 py-2 rounded-lg">
+                    #{player.metadata.jerseyNumber}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-white/90">
+                {player.metadata?.position && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xl">{getPositionIcon(player.metadata.position)}</span>
+                    <span className="capitalize">{player.metadata.position}</span>
                   </div>
+                )}
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-xl">{getCountryFlag(player.country)}</span>
+                  <span>{player.country}</span>
+                </div>
+
+                {player.metadata?.birthDate && (
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-5 h-5" />
+                    <span>{calculateAge(player.metadata.birthDate)} ans</span>
+                  </div>
+                )}
+
+                {player.club && (
+                  <div className="flex items-center space-x-2">
+                    <Trophy className="w-5 h-5" />
+                    <span>{player.club.name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="flex space-x-6 mt-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{player.stats?.totalLicenses || 0}</div>
+                  <div className="text-sm text-white/80">Licences</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{player.stats?.activeLicenses || 0}</div>
+                  <div className="text-sm text-white/80">Actives</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{player.stats?.totalDonationsReceived || 0}€</div>
+                  <div className="text-sm text-white/80">Reçus</div>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-white">
-                    {player.donations?.total || 0}€
-                  </div>
-                  <div className="text-green-100 text-sm font-medium">Total donations</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-white">
-                    {player.donations?.count || 0}
-                  </div>
-                  <div className="text-green-100 text-sm font-medium">Donateurs</div>
-                </div>
-              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex space-x-3">
+              {canEdit && editing ? (
+                <>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleSaveProfile}
+                    className="bg-white text-[#4FBA73] p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Save className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors">
+                    <Heart className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      toast.success('Lien copié', 'Le lien du profil a été copié dans le presse-papiers');
+                    }}
+                    className="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors"
+                    >
+                      <Edit3 className="w-5 h-5" />
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Informations personnelles améliorées */}
-          <div className="lg:col-span-2 space-y-8">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
-                <CardTitle className="flex items-center text-xl">
-                  <User className="w-6 h-6 mr-3 text-blue-600" />
-                  Informations personnelles
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                      <Mail className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-500 font-medium">Email</div>
-                      <div className="font-semibold">{player.email}</div>
-                    </div>
-                  </div>
-                  
-                  {player.phone && (
-                    <div className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                        <Phone className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-500 font-medium">Téléphone</div>
-                        <div className="font-semibold">{player.phone}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                      <MapPin className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-500 font-medium">Pays</div>
-                      <div className="font-semibold">{player.country}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                      <Calendar className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-500 font-medium">Inscription</div>
-                      <div className="font-semibold">{new Date(player.createdAt).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {player.metadata && (
-                  <>
-                    <Separator className="my-8" />
-                    <div>
-                      <h4 className="text-lg font-bold mb-6 flex items-center">
-                        <Trophy className="w-5 h-5 mr-2 text-[#4FBA73]" />
-                        Informations sportives
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {player.metadata.birthDate && (
-                          <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                            <div className="text-2xl font-bold text-blue-600 mb-1">
-                              {new Date().getFullYear() - new Date(player.metadata.birthDate).getFullYear()}
-                            </div>
-                            <div className="text-xs text-blue-600 font-medium">ans</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Né le {new Date(player.metadata.birthDate).toLocaleDateString()}
-                            </div>
-                          </div>
-                        )}
-                        {player.metadata.height && (
-                          <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                            <div className="text-2xl font-bold text-green-600 mb-1">
-                              {player.metadata.height}
-                            </div>
-                            <div className="text-xs text-green-600 font-medium">cm</div>
-                            <div className="text-xs text-gray-500 mt-1">Taille</div>
-                          </div>
-                        )}
-                        {player.metadata.weight && (
-                          <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                            <div className="text-2xl font-bold text-purple-600 mb-1">
-                              {player.metadata.weight}
-                            </div>
-                            <div className="text-xs text-purple-600 font-medium">kg</div>
-                            <div className="text-xs text-gray-500 mt-1">Poids</div>
-                          </div>
-                        )}
-                        {player.metadata.status && (
-                          <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
-                            <div className={`text-2xl font-bold mb-1 ${
-                              player.metadata.status === 'active' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              <Activity className="w-6 h-6 mx-auto" />
-                            </div>
-                            <div className={`text-xs font-medium capitalize ${
-                              player.metadata.status === 'active' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {player.metadata.status}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">Statut</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+      {/* Navigation tabs */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <nav className="flex space-x-8">
+            {[
+              { id: 'overview', label: 'Aperçu', icon: Star },
+              { id: 'licenses', label: 'Licences', icon: Award },
+              { id: 'media', label: 'Médias', icon: ImageIcon }
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id as any)}
+                className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === id
+                    ? 'border-[#4FBA73] text-[#4FBA73]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
 
-            {/* Donations récentes améliorées */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-xl">
-                <CardTitle className="flex items-center text-xl">
-                  <Gift className="w-6 h-6 mr-3 text-green-600" />
-                  Donations reçues
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="text-center p-6 bg-gradient-to-br from-[#4FBA73]/10 to-[#3da562]/20 rounded-2xl border border-[#4FBA73]/20">
-                    <div className="w-12 h-12 bg-[#4FBA73] rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-3xl font-bold text-[#4FBA73] mb-1">
-                      {player.donations?.total || 0}€
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Total reçu</div>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Informations personnelles */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h2 className="text-xl font-bold mb-4">Informations personnelles</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Prénom</label>
+                    {canEdit && editing ? (
+                      <input
+                        type="text"
+                        value={editForm.firstName || ''}
+                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg">{player.firstName}</p>
+                    )}
                   </div>
                   
-                  <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200">
-                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <Star className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-3xl font-bold text-blue-600 mb-1">
-                      {player.donations?.count || 0}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Donations</div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Nom</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editForm.lastName || ''}
+                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg">{player.lastName}</p>
+                    )}
                   </div>
-                  
-                  <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl border border-purple-200">
-                    <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <Award className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-3xl font-bold text-purple-600 mb-1">
-                      {player.donations?.count ? Math.round((player.donations.total || 0) / player.donations.count) : 0}€
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Moyenne</div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <h4 className="text-lg font-bold flex items-center">
-                    <Gift className="w-5 h-5 mr-2 text-[#4FBA73]" />
-                    Donations récentes
-                  </h4>
-                  {player.donations?.recent?.length > 0 ? (
-                    <div className="space-y-3">
-                      {player.donations.recent.map((donation) => (
-                        <div key={donation.id} className="flex justify-between items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl hover:from-gray-100 hover:to-gray-200 transition-all duration-300 border border-gray-200">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-[#4FBA73] rounded-lg flex items-center justify-center mr-4">
-                              <Gift className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">{donation.donor}</p>
-                              <p className="text-sm text-gray-500">{new Date(donation.date).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-[#4FBA73]">
-                              {donation.amount}€
-                            </div>
-                            <div className="text-xs text-gray-500">Donation</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Gift className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <p className="text-gray-500 font-medium">Aucune donation reçue</p>
-                      <p className="text-sm text-gray-400 mt-1">Les donations apparaîtront ici</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* License améliorée */}
-          <div className="space-y-8">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-t-xl">
-                <CardTitle className="flex items-center text-xl">
-                  <FileText className="w-6 h-6 mr-3 text-amber-600" />
-                  License active
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {player.license ? (
-                  <div className="space-y-6">
-                    <div className="relative p-6 bg-gradient-to-br from-[#4FBA73]/10 via-[#4FBA73]/5 to-[#3da562]/10 rounded-2xl border-2 border-[#4FBA73]/20 overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#4FBA73]/10 rounded-full -translate-y-16 translate-x-16"></div>
-                      <div className="relative">
-                        <div className="flex items-center mb-4">
-                          <div className="w-12 h-12 bg-[#4FBA73] rounded-xl flex items-center justify-center mr-4">
-                            <Award className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-lg text-gray-900">{player.license.packName}</h3>
-                            <p className="text-sm text-gray-600">Pack de donation actif</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="text-center p-3 bg-white/60 rounded-lg">
-                            <div className="text-sm text-gray-600 mb-1">Émission</div>
-                            <div className="font-semibold text-gray-900">
-                              {new Date(player.license.issuedAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-center p-3 bg-white/60 rounded-lg">
-                            <div className="text-sm text-gray-600 mb-1">Expiration</div>
-                            <div className="font-semibold text-gray-900">
-                              {new Date(player.license.expiresAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                          <div className="flex items-center">
-                            <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                            <span className="text-sm font-medium text-green-800">License valide</span>
-                          </div>
-                          <Badge className="bg-green-100 text-green-800 border-green-300">
-                            Active
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={handleDownloadLicense}
-                      className="w-full bg-gradient-to-r from-[#4FBA73] to-[#3da562] hover:from-[#3da562] hover:to-[#2d8f4f] shadow-lg hover:shadow-xl transition-all duration-300"
-                      size="lg"
-                    >
-                      <Download className="w-5 h-5 mr-2" />
-                      Télécharger la license PDF
-                    </Button>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Position</label>
+                    {editing ? (
+                      <select
+                        value={editForm.metadata?.position || ''}
+                        onChange={(e) => handleInputChange('metadata.position', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      >
+                        <option value="">Sélectionner</option>
+                        <option value="goalkeeper">Gardien</option>
+                        <option value="defender">Défenseur</option>
+                        <option value="midfielder">Milieu</option>
+                        <option value="forward">Attaquant</option>
+                      </select>
+                    ) : (
+                      <p className="text-lg flex items-center space-x-2">
+                        <span>{getPositionIcon(player.metadata?.position)}</span>
+                        <span>{player.metadata?.position || 'Non défini'}</span>
+                      </p>
+                    )}
                   </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Club</label>
+                    {editing ? (
+                      <select
+                        value={editForm.club?.id || ''}
+                        onChange={(e) => {
+                          const selectedClub = clubs.find(club => club.id === e.target.value)
+                          handleInputChange('club', selectedClub || { id: '', name: '' })
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      >
+                        <option value="">Sélectionner un club</option>
+                        {clubs.map((club) => (
+                          <option key={club.id} value={club.id}>
+                            {club.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-lg">{player.club?.name}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Taille</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editForm.metadata?.height || ''}
+                        onChange={(e) => handleInputChange('metadata.height', e.target.value)}
+                        placeholder="Ex: 175cm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg">{player.metadata?.height || 'Non renseigné'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Poids</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editForm.metadata?.weight || ''}
+                        onChange={(e) => handleInputChange('metadata.weight', e.target.value)}
+                        placeholder="Ex: 70kg"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg">{player.metadata?.weight || 'Non renseigné'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Pays</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editForm.country || ''}
+                        onChange={(e) => handleInputChange('country', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg flex items-center space-x-2">
+                        <span>{getCountryFlag(player.country)}</span>
+                        <span>{player.country}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Fédération</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={editForm.federation?.name || ''}
+                        onChange={(e) => handleInputChange('federation.name', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      />
+                    ) : (
+                      <p className="text-lg">{player.federation?.name}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h2 className="text-xl font-bold mb-4">Biographie</h2>
+                {canEdit && editing ? (
+                  <textarea
+                    value={editForm.metadata?.bio || ''}
+                    onChange={(e) => handleInputChange('metadata.bio', e.target.value)}
+                    rows={4}
+                    placeholder="Décrivez votre parcours, vos objectifs..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                  />
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <FileText className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Aucune license assignée</h3>
-                    <p className="text-gray-500 text-sm">La license apparaîtra automatiquement lors de la première donation</p>
-                  </div>
+                  <p className="text-gray-700 leading-relaxed">
+                    {player.metadata?.bio || 'Aucune biographie disponible'}
+                  </p>
                 )}
-              </CardContent>
-            </Card>
-            
-            {/* Statistiques rapides */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-xl">
-                <CardTitle className="flex items-center text-xl">
-                  <TrendingUp className="w-6 h-6 mr-3 text-indigo-600" />
-                  Statistiques
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
-                    <div className="flex items-center">
-                      <Calendar className="w-5 h-5 text-blue-600 mr-3" />
-                      <span className="font-medium text-gray-900">Membre depuis</span>
+              </div>
+
+              {player.metadata?.achievements && player.metadata.achievements.length > 0 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4">Réalisations</h2>
+                  <ul className="space-y-2">
+                    {player.metadata.achievements.map((achievement, index) => (
+                      <li key={index} className="flex items-center space-x-2">
+                        <Trophy className="w-4 h-4 text-[#4FBA73]" />
+                        <span>{achievement}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Dernières licences */}
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold mb-4">Dernières licences</h3>
+                {licenses.slice(0, 3).map((license) => (
+                  <div key={license.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                    <div>
+                      <p className="font-medium">{license.pack.nom}</p>
+                      <p className="text-sm text-gray-500">{new Date(license.date_emission).toLocaleDateString()}</p>
                     </div>
-                    <span className="font-bold text-blue-600">
-                      {Math.floor((Date.now() - new Date(player.createdAt).getTime()) / (1000 * 60 * 60 * 24))} jours
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {license.statut}
                     </span>
                   </div>
-                  
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl">
-                    <div className="flex items-center">
-                      <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-                      <span className="font-medium text-gray-900">Statut compte</span>
-                    </div>
-                    <Badge className={`${
-                      player.isVerified 
-                        ? 'bg-green-100 text-green-800 border-green-300' 
-                        : 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                    }`}>
-                      {player.isVerified ? 'Vérifié' : 'En attente'}
-                    </Badge>
+                ))}
+                {licenses.length > 3 && (
+                  <button
+                    onClick={() => setActiveTab('licenses')}
+                    className="w-full mt-4 text-[#4FBA73] hover:underline text-sm"
+                  >
+                    Voir toutes les licences
+                  </button>
+                )}
+              </div>
+
+              {/* Contact */}
+              {(player.email || player.phone) && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Contact</h3>
+                  <div className="space-y-2">
+                    {player.email && (
+                      <p className="text-sm">
+                        <span className="font-medium">Email:</span> {player.email}
+                      </p>
+                    )}
+                    {player.phone && (
+                      <p className="text-sm">
+                        <span className="font-medium">Téléphone:</span> {player.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'licenses' && (
+          <div className="bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">Historique des licences</h2>
+            </div>
+            <div className="p-6">
+              {licenses.length === 0 ? (
+                <div className="text-center py-12">
+                  <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucune licence trouvée</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {licenses.map((license) => (
+                    <div key={license.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-lg">{license.pack.nom}</h3>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {license.statut}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">Numéro:</span> {license.numero_licence}
+                        </div>
+                        <div>
+                          <span className="font-medium">Émission:</span> {new Date(license.date_emission).toLocaleDateString()}
+                        </div>
+                        <div>
+                          <span className="font-medium">Expiration:</span> {new Date(license.date_expiration).toLocaleDateString()}
+                        </div>
+                        <div>
+                          <span className="font-medium">Montant:</span> {license.montant_paye}€
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'media' && (
+          <MediaUploader
+            playerId={playerId}
+            media={media}
+            onMediaUpdate={fetchPlayerData}
+            canEdit={canEdit}
+          />
+        )}
       </div>
     </div>
-  )
+  );
 }

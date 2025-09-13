@@ -102,28 +102,33 @@ export async function getClubLicences(club_oauth_id?: string): Promise<LicenceDa
 }
 
 export async function getPlayerLicences(joueur_oauth_id: string): Promise<LicenceData[]> {
-  const licences = await prisma.licence.findMany({
-    where: { joueur_oauth_id },
-    include: {
-      pack: {
-        select: {
-          nom: true,
-          code: true,
-          prix: true
+  try {
+    const licences = await prisma.licence.findMany({
+      where: { joueur_oauth_id },
+      include: {
+        pack: {
+          select: {
+            nom: true,
+            code: true,
+            prix: true
+          }
         }
-      }
-    },
-    orderBy: { created_at: 'desc' }
-  })
+      },
+      orderBy: { created_at: 'desc' }
+    })
 
-  return licences.map(licence => ({
-    ...licence,
-    montant_paye: Number(licence.montant_paye),
-    pack: {
-      ...licence.pack,
-      prix: Number(licence.pack.prix)
-    }
-  }))
+    return licences.map(licence => ({
+      ...licence,
+      montant_paye: Number(licence.montant_paye),
+      pack: {
+        ...licence.pack,
+        prix: Number(licence.pack.prix)
+      }
+    }))
+  } catch (error) {
+    console.error('Erreur getPlayerLicences:', error)
+    return []
+  }
 }
 
 export async function updateLicenceStatus(licenceId: string, statut: string): Promise<LicenceData> {

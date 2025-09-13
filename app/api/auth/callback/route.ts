@@ -21,10 +21,14 @@ export async function GET(request: NextRequest) {
   
   try {
     // Échanger le code contre des tokens
+    console.log('Echange du code pour les tokens...')
     const tokens = await exchangeCodeForTokens(code)
+    console.log('Tokens reçus:', { access_token: tokens.access_token ? 'present' : 'missing' })
     
     // Récupérer les infos utilisateur
+    console.log('Récupération des infos utilisateur...')
     const user = await getUserInfo(tokens.access_token)
+    console.log('Utilisateur récupéré:', { sub: user.sub, email: user.email })
     
     // Créer une session locale
     const sessionToken = createSession(user, tokens)
@@ -40,11 +44,18 @@ export async function GET(request: NextRequest) {
     // Supprimer le state cookie
     cookieStore.delete('oauth-state')
     
-    // Rediriger vers la page d'accueil
-    return NextResponse.redirect(new URL('/', request.url))
+    // Rediriger vers la page d'accueil en utilisant APP_URL
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || new URL('/', request.url).origin
+    return NextResponse.redirect(new URL('/', appUrl))
     
   } catch (error) {
     console.error('OAuth callback error:', error)
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
+    
+    // Rediriger vers la page d'accueil avec un message d'erreur
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || new URL('/', request.url).origin
+    const errorUrl = new URL('/', appUrl)
+    errorUrl.searchParams.set('auth_error', 'Service d\'authentification temporairement indisponible')
+    
+    return NextResponse.redirect(errorUrl)
   }
 }

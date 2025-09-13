@@ -13,7 +13,7 @@ class PaieCashAuthAPI {
       ...(options.headers as Record<string, string>)
     }
 
-    if (this.accessToken && endpoint.startsWith('/api/oauth')) {
+    if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`
     }
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const api = new PaieCashAuthAPI(getOAuthConfig().issuer, user.access_token)
     
     try {
-      // Récupérer les membres du club
+      // Récupérer les membres du club depuis l'API OAuth
       const membersResult = await api.makeRequest(`/api/oauth/clubs/${user.sub}/members`)
       const members = membersResult.members || []
 

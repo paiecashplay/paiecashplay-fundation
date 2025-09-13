@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-import { getOAuthConfig } from '@/lib/auth';
+import { getCurrentUser, getOAuthConfig } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
-
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user = await getCurrentUser()
     
     if (!user) {
@@ -14,160 +17,176 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const playerId = params.id
+    // Récupérer les données du joueur depuis l'API OAuth
+    const config = getOAuthConfig()
+    const response = await fetch(`${config.issuer}/api/oauth/users/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${user.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    })
 
-    // Récupérer les infos du joueur depuis l'API OAuth publique
-    const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
-    
-    if (!oauthResponse.ok) {
-      throw new Error('Erreur lors de la récupération des joueurs')
-    }
-
-    const playersData = await oauthResponse.json()
-    const player = playersData.players?.find((p: any) => p.id === playerId)
-
-    if (!player) {
+    if (!response.ok) {
       return NextResponse.json(
         { error: 'Joueur non trouvé' },
         { status: 404 }
       )
     }
 
-    // Récupérer les donations depuis la BD locale
-    const { PrismaClient } = await import('@prisma/client')
-    const prisma = new PrismaClient()
+    const playerOAuth = await response.json()
     
-    try {
-      const donations = await prisma.donation.findMany({
-        where: { 
-          joueur: {
-            oauth_id: playerId
-          }
-        },
-        include: { joueur: true },
-        orderBy: { date_creation: 'desc' }
-      })
-
-      // Calculer les statistiques de donations
-      const totalDonations = donations.reduce((sum, donation) => sum + Number(donation.montant), 0)
-      const donationCount = donations.length
-
-      // Récupérer les donations récentes avec infos des donateurs
-      const recentDonations = await Promise.all(
-        donations.slice(0, 5).map(async (donation) => {
-          // Essayer de récupérer les infos du donateur si ce n'est pas anonyme
-          let donorName = 'Donateur anonyme'
-          if (donation.donateur_id && !donation.is_anonymous) {
-            try {
-              const donorResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
-              const donorsData = await donorResponse.json()
-              const donor = donorsData.players?.find((p: any) => p.id === donation.donateur_id)
-              if (donor) {
-                donorName = `${donor.firstName || ''} ${donor.lastName || ''}`.trim() || 'Donateur'
-              }
-            } catch {
-              // Garder le nom par défaut
-            }
-          }
-
-          return {
-            id: donation.id,
-            amount: Number(donation.montant),
-            date: donation.date_creation.toISOString(),
-            donor: donorName,
-            packName: donation.pack_nom
-          }
-        })
-      )
-
-      // Licence active (la plus récente donation)
-      const activeLicense = donations.length > 0 ? {
-        id: donations[0].id,
-        packName: donations[0].pack_nom,
-        issuedAt: donations[0].date_creation.toISOString(),
-        expiresAt: new Date(donations[0].date_creation.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 an
-        downloadUrl: `/api/licenses/${donations[0].id}/download`
-      } : null
-
-      await prisma.$disconnect()
-
-      // Formater les données du joueur
-      const playerData = {
-        id: player.id,
-        email: player.email,
-        firstName: player.firstName || player.given_name,
-        lastName: player.lastName || player.family_name,
-        country: player.country,
-        phone: player.phone_number,
-        isVerified: player.email_verified || false,
-        createdAt: player.created_at ? new Date(player.created_at * 1000).toISOString() : new Date().toISOString(),
-        metadata: {
-          position: player.metadata?.position,
-          licenseNumber: player.metadata?.licenseNumber,
-          jerseyNumber: player.metadata?.jerseyNumber,
-          birthDate: player.metadata?.birthDate,
-          height: player.metadata?.height,
-          weight: player.metadata?.weight,
-          status: player.metadata?.status || 'active'
-        },
-        license: activeLicense,
-        donations: {
-          total: totalDonations,
-          count: donationCount,
-          recent: recentDonations
+    // Récupérer les donations depuis la base de données locale
+    const donations = await prisma.donation.findMany({
+      where: {
+        joueur: {
+          oauth_id: id
         }
+      },
+      select: {
+        montant: true,
+        statut: true
       }
+    })
 
-      return NextResponse.json({
-        success: true,
-        data: playerData
-      })
-
-    } catch (dbError) {
-      console.error('Erreur BD player details:', dbError)
-      await prisma.$disconnect()
-      
-      // Retourner les données de base sans les donations
-      const playerData = {
-        id: player.id,
-        email: player.email,
-        firstName: player.firstName || player.given_name,
-        lastName: player.lastName || player.family_name,
-        country: player.country,
-        phone: player.phone_number,
-        isVerified: player.email_verified || false,
-        createdAt: player.created_at ? new Date(player.created_at * 1000).toISOString() : new Date().toISOString(),
-        metadata: {
-          position: player.metadata?.position,
-          licenseNumber: player.metadata?.licenseNumber,
-          jerseyNumber: player.metadata?.jerseyNumber,
-          birthDate: player.metadata?.birthDate,
-          height: player.metadata?.height,
-          weight: player.metadata?.weight,
-          status: player.metadata?.status || 'active'
-        },
-        license: null,
-        donations: {
-          total: 0,
-          count: 0,
-          recent: []
-        }
+    // Calculer les statistiques
+    const completedDonations = donations.filter(d => d.statut === 'completed')
+    const totalDonationsReceived = completedDonations.reduce((sum, d) => sum + Number(d.montant), 0)
+    
+    const playerUser = playerOAuth.user
+    const profile = playerUser.profile
+    
+    const playerData = {
+      id: playerUser.id,
+      firstName: profile.firstName || 'Joueur',
+      lastName: profile.lastName || '',
+      email: playerUser.email,
+      picture: profile.avatarUrl,
+      country: profile.country || 'France',
+      isVerified: playerUser.isVerified || false,
+      createdAt: new Date(playerUser.createdAt).toISOString(),
+      metadata: {
+        position: profile.metadata?.position || 'Joueur',
+        height: profile.metadata?.height,
+        weight: profile.metadata?.weight,
+        birthDate: profile.metadata?.birthDate,
+        jerseyNumber: profile.metadata?.jerseyNumber,
+        bio: profile.metadata?.bio || `Joueur passionné de football.`,
+        achievements: profile.metadata?.achievements || [
+          'Membre actif du club',
+          'Participation aux entraînements'
+        ]
+      },
+      club: {
+        id: profile.metadata?.clubId || 'club-1',
+        name: profile.metadata?.clubName || 'Club de Football'
+      },
+      federation: {
+        id: 'fed-1',
+        name: 'Fédération de Football'
+      },
+      stats: {
+        totalLicenses: donations.length,
+        activeLicenses: completedDonations.length,
+        totalDonationsReceived: Math.round(totalDonationsReceived)
       }
-
-      return NextResponse.json({
-        success: true,
-        data: playerData
-      })
     }
 
+    return NextResponse.json(playerData)
   } catch (error) {
-    console.error('Erreur récupération player details:', error)
-    
+    console.error('Erreur API joueur:', error)
     return NextResponse.json(
-      { 
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur serveur'
+      { error: 'Erreur serveur' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser()
+    const { id } = await params
+    const body = await request.json()
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
+    }
+
+    // Vérifier que l'utilisateur peut modifier ce profil
+    let canEdit = false
+    
+    if (user.sub === id) {
+      // L'utilisateur modifie son propre profil
+      canEdit = true
+    } else if (user.user_type === 'club') {
+      // Vérifier si le joueur est membre du club
+      try {
+        const config = getOAuthConfig()
+        const membersResponse = await fetch(`${config.issuer}/api/oauth/clubs/${user.sub}/members`, {
+          headers: {
+            'Authorization': `Bearer ${user.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (membersResponse.ok) {
+          const membersResult = await membersResponse.json()
+          const members = membersResult.members || []
+          canEdit = members.some((member: any) => member.id === id)
+        }
+      } catch (error) {
+        console.error('Erreur vérification membre:', error)
+      }
+    }
+    
+    if (!canEdit) {
+      return NextResponse.json(
+        { error: 'Non autorisé' },
+        { status: 403 }
+      )
+    }
+
+    // Mettre à jour via l'API OAuth
+    const config = getOAuthConfig()
+    
+    // Si c'est un club qui modifie, utiliser l'endpoint spécifique
+    const endpoint = user.user_type === 'club' && user.sub !== id
+      ? `/api/oauth/clubs/${user.sub}/members/${id}`
+      : '/api/auth/profile'
+    
+    const response = await fetch(`${config.issuer}${endpoint}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${user.access_token}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        firstName: body.firstName,
+        lastName: body.lastName,
+        country: body.country,
+        metadata: body.metadata
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return NextResponse.json(
+        { error: error.message || 'Erreur lors de la mise à jour' },
+        { status: response.status }
+      )
+    }
+
+    const result = await response.json()
+    return NextResponse.json({ success: true, player: result.profile })
+  } catch (error) {
+    console.error('Erreur mise à jour joueur:', error)
+    return NextResponse.json(
+      { error: 'Erreur serveur' },
       { status: 500 }
     )
   }

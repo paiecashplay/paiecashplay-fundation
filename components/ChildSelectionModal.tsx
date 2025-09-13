@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search, MapPin, Users, Globe, ArrowLeft, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 import { getOAuthConfig } from '@/lib/auth';
 import { useToastContext } from '@/components/ToastProvider';
@@ -230,6 +231,24 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
     }
   };
 
+  const handleSaveProfile = async (playerData: any) => {
+    try {
+      const response = await fetch(`/api/players/${playerData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(playerData)
+      })
+      
+      if (response.ok) {
+        toast.success('Profil mis à jour', 'Les informations ont été sauvegardées')
+      }
+    } catch (error) {
+      toast.error('Erreur', 'Impossible de sauvegarder le profil')
+    }
+  };
+
   const handleBack = () => {
     if (step === 'child') {
       setStep('country');
@@ -358,7 +377,13 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-bold text-base text-gray-900 truncate">{child.prenom} {child.nom}</h3>
+                          <Link 
+                            href={`/player/${child.id}`}
+                            className="font-bold text-base text-gray-900 hover:text-[#4FBA73] transition-colors truncate"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {child.prenom} {child.nom}
+                          </Link>
                           <span className="text-sm font-bold text-[#4FBA73] bg-[#4FBA73]/10 px-2 py-1 rounded-md ml-2">
                             #{child.jerseyNumber}
                           </span>
