@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useToastContext } from '@/components/ToastProvider'
 import { User, Mail, Phone, MapPin, Calendar, Trophy, Edit3, Save, X, Building, Users, Globe, Shield } from 'lucide-react'
 import ProfilePictureUpload from '@/components/ProfilePictureUpload'
+import Link from 'next/link'
 
 interface ClubProfile {
   sub: string
@@ -40,7 +41,7 @@ interface ClubProfile {
 }
 
 export default function ProfilePage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, updateUser } = useAuth()
   const router = useRouter()
   const { toast } = useToastContext()
   const [profile, setProfile] = useState<ClubProfile | null>(null)
@@ -234,7 +235,11 @@ export default function ProfilePage() {
                           ...prev,
                           picture: url
                         } : null)
-                        // Pas de rechargement automatique
+                        setEditForm(prev => ({
+                          ...prev,
+                          picture: url
+                        }))
+                        updateUser({ picture: url })
                       }}
                       size="lg"
                     />
@@ -590,12 +595,9 @@ export default function ProfilePage() {
                 >
                   Voir le dashboard
                 </button>
-                <button className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                <Link href="/dashboard" className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-lg transition-colors text-center block">
                   Gérer les joueurs
-                </button>
-                <button className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-lg transition-colors">
-                  Historique des dons
-                </button>
+                </Link>
               </div>
             </div>
           </div>

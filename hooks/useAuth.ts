@@ -20,7 +20,17 @@ export function useAuth() {
       }
     }
 
+    // Écouter les mises à jour de profil
+    const handleProfileUpdate = (event: CustomEvent) => {
+      setUser(event.detail)
+    }
+
     fetchUser()
+    window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    }
   }, [])
 
   const login = () => {
@@ -41,5 +51,28 @@ export function useAuth() {
 
   const isAdmin = user?.user_type === 'admin'
 
-  return { user, loading, login, logout, isAdmin }
+  const updateUser = (updatedData: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...updatedData } : null)
+  }
+
+  const refreshUser = async () => {
+    try {
+      const response = await fetch('/api/auth/me?refresh=true', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData)
+        return userData
+      }
+    } catch (error) {
+      console.error('Erreur rafraîchissement utilisateur:', error)
+    }
+    return null
+  }
+
+  return { user, loading, login, logout, isAdmin, updateUser, refreshUser }
 }

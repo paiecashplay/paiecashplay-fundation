@@ -52,9 +52,14 @@ export default function UserDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors"
       >
-        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-medium">
+        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-medium overflow-hidden">
           {user.picture ? (
-            <img src={user.picture} alt={fullName} className="w-8 h-8 rounded-full" />
+            <img 
+              src={`${user.picture}${user.picture.includes('?') ? '&' : '?'}t=${Date.now()}`} 
+              alt={fullName} 
+              className="w-8 h-8 rounded-full object-cover" 
+              key={`${user.picture}-${Date.now()}`}
+            />
           ) : (
             initials
           )}

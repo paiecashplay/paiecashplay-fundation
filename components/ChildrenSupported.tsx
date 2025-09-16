@@ -123,25 +123,23 @@ export default function ChildrenSupported() {
           const config = configs[index % 3];
 
           return (
-            <div key={child.id} className="child-card rounded-lg shadow overflow-hidden">
-              <div className={`bg-gradient-to-br ${config.bgGradient} h-48 flex items-center justify-center`}>
-                <div 
-                  className="w-20 h-20 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: config.circleColor }}
-                >
-                  <span className="text-2xl">{child.photo_emoji}</span>
+            <Link key={child.id} href={`/player/${child.id}`} className="block">
+              <div className="child-card rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+                <div className={`bg-gradient-to-br ${config.bgGradient} h-48 flex items-center justify-center`}>
+                  <div 
+                    className="w-20 h-20 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: config.circleColor }}
+                  >
+                    <span className="text-2xl">{child.photo_emoji}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="p-6">
+                <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <Link 
-                      href={`/player/${child.id}`}
-                      className="font-bold text-lg hover:text-[#4FBA73] transition-colors cursor-pointer block"
-                    >
+                    <h4 className="font-bold text-lg hover:text-[#4FBA73] transition-colors">
                       {child.prenom}, {child.age} ans
-                    </Link>
+                    </h4>
                     <p className="text-gray-600">{child.club_nom}, {child.pays_nom}</p>
                   </div>
                   <div className={config.iconColor}>
@@ -162,8 +160,9 @@ export default function ChildrenSupported() {
                     {child.nombre_parrains} parrain{child.nombre_parrains > 1 ? 's' : ''}
                   </span>
                 </div>
+                </div>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

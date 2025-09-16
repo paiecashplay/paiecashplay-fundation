@@ -309,7 +309,10 @@ export default function PlayerProfilePage() {
                       ...prev,
                       picture: url
                     } : null)
-                    // Pas de rechargement automatique
+                    // Mettre à jour aussi l'utilisateur connecté si c'est son profil
+                    if (currentUser && currentUser.sub === playerId) {
+                      // Pas d'accès direct à updateUser ici, mais l'image sera mise à jour au prochain rechargement
+                    }
                   }}
                   size="lg"
                 />

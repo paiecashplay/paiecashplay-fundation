@@ -68,14 +68,42 @@ export default function ProfilePictureUpload({
 
       if (response.ok) {
         const result = await response.json();
+        console.log('Résultat upload:', result);
         
         // Animation de complétion
         setUploadProgress(100);
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Mettre à jour directement avec l'URL reçue
-        onPictureUpdate(result.picture);
-        toast.success('Photo mise à jour', 'Votre photo de profil a été mise à jour avec succès');
+        // Utiliser directement l'URL retournée par l'API
+        if (result.picture) {
+          console.log('Utilisation directe de l\'URL retournée:', result.picture);
+          onPictureUpdate(result.picture);
+          
+          // Forcer le rafraîchissement global de l'utilisateur
+          setTimeout(async () => {
+            try {
+              const profileResponse = await fetch('/api/auth/me?refresh=true&t=' + Date.now(), {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache' }
+              });
+              
+              if (profileResponse.ok) {
+                const profileData = await profileResponse.json();
+                // Déclencher un événement personnalisé pour mettre à jour tous les composants
+                window.dispatchEvent(new CustomEvent('userProfileUpdated', { 
+                  detail: profileData 
+                }));
+              }
+            } catch (error) {
+              console.log('Impossible de récupérer le profil mis à jour:', error);
+            }
+          }, 500);
+          
+          toast.success('Photo mise à jour', 'Votre photo de profil a été mise à jour avec succès');
+        } else {
+          console.warn('Aucune URL retournée par l\'API');
+        }
+
       } else {
         const error = await response.json();
         toast.error('Erreur d\'upload', error.error || 'Erreur inconnue');
@@ -93,10 +121,10 @@ export default function ProfilePictureUpload({
       <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-br from-[#4FBA73] to-[#3da562] flex items-center justify-center relative`}>
         {currentPicture ? (
           <img
-            src={currentPicture}
+            src={`${currentPicture}${currentPicture.includes('?') ? '&' : '?'}t=${Date.now()}`}
             alt="Photo de profil"
             className="w-full h-full object-cover"
-            key={currentPicture} // Force le re-render quand l'URL change
+            key={`${currentPicture}-${Date.now()}`} // Force le re-render avec timestamp
           />
         ) : (
           <span className="text-white text-4xl font-bold">
