@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Image as ImageIcon, Video, Trash2, Eye } from 'lucide-react';
+import { Image as ImageIcon, Video, Trash2, Eye, X } from 'lucide-react';
 import { useToastContext } from '@/components/ToastProvider';
 import MediaUploadWithPreview from './MediaUploadWithPreview';
 
@@ -24,6 +24,9 @@ interface MediaUploaderProps {
 export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit = false }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+  const [viewingImage, setViewingImage] = useState<MediaItem | null>(null);
   const { toast } = useToastContext();
 
   const handleUpload = async (files: File[]) => {
@@ -74,6 +77,7 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
   const deleteMedia = async (mediaId: string) => {
     if (!canEdit) return;
     
+    setDeleting(mediaId);
     try {
       const response = await fetch(`/api/players/${playerId}/media?mediaId=${mediaId}`, {
         method: 'DELETE'
@@ -87,6 +91,9 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
       }
     } catch (error) {
       toast.error('Erreur', 'Une erreur est survenue');
+    } finally {
+      setDeleting(null);
+      setShowDeleteModal(null);
     }
   };
 
@@ -106,9 +113,9 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
             onUpload={handleUpload}
             uploading={uploading}
             uploadProgress={uploadProgress}
-            maxFiles={20}
+            maxFiles={10}
             accept="image/*,video/*"
-            maxSize={50}
+            maxSize={10}
           />
         </div>
       )}
@@ -134,18 +141,26 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
                 <img
                   src={item.url}
                   alt={item.title}
-                  className="w-full h-32 object-cover rounded-lg"
+                  className="w-full h-48 object-contain bg-gray-100 rounded-lg"
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
-                  <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg">
+                  <button 
+                    onClick={() => setViewingImage(item)}
+                    className="bg-white/20 hover:bg-white/30 p-2 rounded-lg"
+                  >
                     <Eye className="w-4 h-4 text-white" />
                   </button>
                   {canEdit && (
                     <button
-                      onClick={() => deleteMedia(item.id)}
-                      className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg"
+                      onClick={() => setShowDeleteModal(item.id)}
+                      disabled={deleting === item.id}
+                      className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4 text-white" />
+                      {deleting === item.id ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4 text-white" />
+                      )}
                     </button>
                   )}
                 </div>
@@ -177,15 +192,20 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
                 <div className="relative">
                   <video
                     src={item.url}
-                    className="w-full h-48 object-cover rounded-lg"
+                    className="w-full h-64 object-contain bg-gray-100 rounded-lg"
                     controls
                   />
                   {canEdit && (
                     <button
-                      onClick={() => deleteMedia(item.id)}
-                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 p-2 rounded-lg"
+                      onClick={() => setShowDeleteModal(item.id)}
+                      disabled={deleting === item.id}
+                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 p-2 rounded-lg disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4 text-white" />
+                      {deleting === item.id ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4 text-white" />
+                      )}
                     </button>
                   )}
                 </div>
@@ -198,6 +218,67 @@ export default function MediaUploader({ playerId, media, onMediaUpdate, canEdit 
           </div>
         )}
       </div>
+
+      {/* Modal de confirmation */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md mx-4">
+            <h3 className="text-lg font-bold mb-4">Confirmer la suppression</h3>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir supprimer ce média ? Cette action est irréversible.
+            </p>
+            <div className="flex space-x-3 justify-end">
+              <button
+                onClick={() => setShowDeleteModal(null)}
+                disabled={deleting === showDeleteModal}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => deleteMedia(showDeleteModal)}
+                disabled={deleting === showDeleteModal}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center space-x-2"
+              >
+                {deleting === showDeleteModal ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Suppression...</span>
+                  </>
+                ) : (
+                  <span>Supprimer</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Viewer d'image */}
+      {viewingImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50" onClick={() => setViewingImage(null)}>
+          <div className="relative max-w-screen-lg max-h-screen-lg p-4">
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-lg z-10"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            <img
+              src={viewingImage.url}
+              alt={viewingImage.title}
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 bg-black/50 text-white p-3 rounded-lg">
+              <h3 className="font-medium">{viewingImage.title}</h3>
+              {viewingImage.description && (
+                <p className="text-sm text-gray-300 mt-1">{viewingImage.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

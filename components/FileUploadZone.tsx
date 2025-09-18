@@ -17,7 +17,7 @@ export default function FileUploadZone({
   onFileSelect,
   accept = "image/*,video/*",
   multiple = true,
-  maxSize = 50,
+  maxSize = 10,
   disabled = false,
   className = ""
 }: FileUploadZoneProps) {
@@ -27,13 +27,26 @@ export default function FileUploadZone({
 
   const validateFiles = (files: FileList): File[] => {
     const validFiles: File[] = [];
-    const maxSizeBytes = maxSize * 1024 * 1024;
 
     Array.from(files).forEach(file => {
-      if (file.size > maxSizeBytes) {
-        toast.error('Fichier trop volumineux', `${file.name} dépasse ${maxSize}MB`);
+      // Vérifier le type de fichier
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      
+      if (!isImage && !isVideo) {
+        toast.error('Type non supporté', `${file.name} n'est pas une image ou vidéo`);
         return;
       }
+      
+      // Vérifier la taille selon le type
+      const maxSizeForType = isVideo ? 50 : 10; // 50MB pour vidéos, 10MB pour images
+      const maxSizeBytes = maxSizeForType * 1024 * 1024;
+      
+      if (file.size > maxSizeBytes) {
+        toast.error('Fichier trop volumineux', `${file.name} dépasse ${maxSizeForType}MB`);
+        return;
+      }
+      
       validFiles.push(file);
     });
 
@@ -92,11 +105,11 @@ export default function FileUploadZone({
             {!disabled && (
               <p className="text-sm text-gray-500 mt-2">
                 {accept.includes('image') && accept.includes('video') 
-                  ? `Images et vidéos (max ${maxSize}MB)`
+                  ? 'Images (max 10MB) et vidéos (max 50MB)'
                   : accept.includes('image')
-                  ? `Images uniquement (max ${maxSize}MB)`
+                  ? 'Images uniquement (max 10MB)'
                   : accept.includes('video')
-                  ? `Vidéos uniquement (max ${maxSize}MB)`
+                  ? 'Vidéos uniquement (max 50MB)'
                   : `Fichiers (max ${maxSize}MB)`
                 }
               </p>

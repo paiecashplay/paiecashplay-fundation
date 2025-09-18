@@ -8,20 +8,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const user = await getCurrentUser()
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Récupérer les données du joueur depuis l'API OAuth
+    // Récupérer les données du joueur depuis l'API OAuth publique
     const config = getOAuthConfig()
-    const response = await fetch(`${config.issuer}/api/oauth/users/${id}`, {
+    const response = await fetch(`${config.issuer}/api/public/players/${id}`, {
       headers: {
-        'Authorization': `Bearer ${user.access_token}`,
         'Content-Type': 'application/json'
       }
     })
@@ -33,7 +24,8 @@ export async function GET(
       )
     }
 
-    const playerOAuth = await response.json()
+    const playerData = await response.json()
+    console.log('Données joueur OAuth:', playerData)
     
     // Récupérer les donations depuis la base de données locale
     const donations = await prisma.donation.findMany({
@@ -52,37 +44,57 @@ export async function GET(
     const completedDonations = donations.filter(d => d.statut === 'completed')
     const totalDonationsReceived = completedDonations.reduce((sum, d) => sum + Number(d.montant), 0)
     
-    const playerUser = playerOAuth.user
-    const profile = playerUser.profile
+    // Calculer l'âge
+    let age = 18
+    if (playerData.age) {
+      age = playerData.age
+    } else if (playerData.dateOfBirth) {
+      const birthDate = new Date(playerData.dateOfBirth)
+      const today = new Date()
+      age = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--
+      }
+    }
     
-    const playerData = {
-      id: playerUser.id,
-      firstName: profile.firstName || 'Joueur',
-      lastName: profile.lastName || '',
-      email: playerUser.email,
-      picture: profile.avatarUrl,
-      country: profile.country || 'France',
-      isVerified: playerUser.isVerified || false,
-      createdAt: new Date(playerUser.createdAt).toISOString(),
-      metadata: {
-        position: profile.metadata?.position || 'Joueur',
-        height: profile.metadata?.height,
-        weight: profile.metadata?.weight,
-        birthDate: profile.metadata?.birthDate,
-        jerseyNumber: profile.metadata?.jerseyNumber,
-        bio: profile.metadata?.bio || `Joueur passionné de football.`,
-        achievements: profile.metadata?.achievements || [
-          'Membre actif du club',
-          'Participation aux entraînements'
-        ]
-      },
+    const formattedPlayerData = {
+      id: playerData.id,
+      firstName: playerData.firstName || 'Joueur',
+      lastName: playerData.lastName || '',
+      email: playerData.email,
+      phone: playerData.phone,
+      picture: playerData.avatarUrl,
+      country: playerData.country || 'France',
+      language: playerData.language,
+      isVerified: playerData.isVerified || false,
+      isActive: playerData.isActive,
+      createdAt: playerData.createdAt,
+      updatedAt: playerData.updatedAt,
+      age: age,
+      position: playerData.position,
+      height: playerData.height,
+      weight: playerData.weight,
+      status: playerData.status || 'active',
+      preferredFoot: playerData.preferredFoot,
+      jerseyNumber: playerData.jerseyNumber,
+      previousClubs: playerData.previousClubs || [],
+      achievements: playerData.achievements || [],
+      injuries: playerData.injuries || [],
+      notes: playerData.notes,
+      contractStatus: playerData.contractStatus,
       club: {
-        id: profile.metadata?.clubId || 'club-1',
-        name: profile.metadata?.clubName || 'Club de Football'
-      },
-      federation: {
-        id: 'fed-1',
-        name: 'Fédération de Football'
+        id: playerData.club?.id,
+        name: playerData.club?.name || 'Club non renseigné',
+        country: playerData.club?.country,
+        federation: playerData.club?.federation,
+        email: playerData.club?.email,
+        phone: playerData.club?.phone,
+        website: playerData.club?.website,
+        address: playerData.club?.address,
+        foundedYear: playerData.club?.foundedYear,
+        description: playerData.club?.description,
+        isVerified: playerData.club?.isVerified
       },
       stats: {
         totalLicenses: donations.length,
@@ -91,7 +103,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(playerData)
+    return NextResponse.json(formattedPlayerData)
   } catch (error) {
     console.error('Erreur API joueur:', error)
     return NextResponse.json(
@@ -159,7 +171,31 @@ export async function PUT(
       ? `/api/oauth/clubs/${user.sub}/members/${id}`
       : '/api/auth/profile'
     
-    const response = await fetch(`${config.issuer}${endpoint}`, {
+    // Gérer le changement de club si nécessaire
+    if (body.club && body.club.id) {
+      try {
+        // Ajouter le joueur au nouveau club
+        const addMemberResponse = await fetch(`${config.issuer}/api/oauth/clubs/${body.club.id}/members`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            playerId: id,
+            role: 'player'
+          })
+        })
+        
+        if (!addMemberResponse.ok) {
+          console.warn('Erreur ajout au club:', await addMemberResponse.text())
+        }
+      } catch (error) {
+        console.error('Erreur gestion club:', error)
+      }
+    }
+    
+    const response = await fetch(`${config.issuer}/api/oauth/players/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${user.access_token}`,
@@ -168,8 +204,17 @@ export async function PUT(
       body: JSON.stringify({
         firstName: body.firstName,
         lastName: body.lastName,
+        phone: body.phone,
         country: body.country,
-        metadata: body.metadata
+        height: body.height,
+        weight: body.weight,
+        metadata: {
+          position: body.metadata?.position,
+          preferredFoot: body.metadata?.preferredFoot,
+          jerseyNumber: body.metadata?.jerseyNumber,
+          notes: body.metadata?.notes,
+          club: body.metadata?.club
+        }
       })
     })
 

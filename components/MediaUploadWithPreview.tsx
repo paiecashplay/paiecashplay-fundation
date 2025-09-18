@@ -113,17 +113,17 @@ export default function MediaUploadWithPreview({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
             {selectedFiles.map((mediaFile) => (
               <div key={mediaFile.id} className="relative group">
-                <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100">
                   {mediaFile.file.type.startsWith('image/') ? (
                     <img
                       src={mediaFile.preview}
                       alt={mediaFile.file.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <video
                       src={mediaFile.preview}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                       muted
                     />
                   )}

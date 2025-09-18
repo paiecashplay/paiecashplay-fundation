@@ -18,6 +18,7 @@ export async function GET() {
     }
 
     const playersData = await oauthResponse.json()
+    console.log('Données joueurs OAuth:', playersData)
     
     // Récupérer les données de donations depuis la BD locale
     const { PrismaClient } = await import('@prisma/client')
@@ -27,6 +28,29 @@ export async function GET() {
       // Transformer les données avec les vraies données de donations
       const supportedChildren = await Promise.all(
         playersData.players?.slice(0, 3).map(async (player: any) => {
+          console.log('Player data:', {
+            id: player.id,
+            age: player.age,
+            dateOfBirth: player.dateOfBirth,
+            club: player.club
+          })
+          
+          // Calculer l'âge correctement
+          let calculatedAge = 18 // fallback
+          if (player.age) {
+            calculatedAge = player.age
+          } else if (player.dateOfBirth) {
+            const birthDate = new Date(player.dateOfBirth)
+            const today = new Date()
+            calculatedAge = today.getFullYear() - birthDate.getFullYear()
+            const monthDiff = today.getMonth() - birthDate.getMonth()
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+              calculatedAge--
+            }
+          }
+          
+          console.log('Calculated age:', calculatedAge)
+          
           // Récupérer les licences du joueur
           const licences = await prisma.licence.findMany({
             where: { joueur_oauth_id: player.id },
@@ -41,12 +65,10 @@ export async function GET() {
             id: player.id,
             nom: player.lastName || 'Nom',
             prenom: player.firstName || 'Prénom',
-            age: player.metadata?.birthDate ? 
-              new Date().getFullYear() - new Date(player.metadata.birthDate).getFullYear() : 
-              18,
+            age: calculatedAge,
             pays_nom: player.country || 'France',
             photo_emoji: getRandomEmoji(),
-            club_nom: player.club?.name || 'Club de Football',
+            club_nom: player.club?.name || 'Club non renseigné',
             total_dons_recus: totalDons,
             nombre_parrains: licences.length
           }
@@ -64,17 +86,33 @@ export async function GET() {
       await prisma.$disconnect()
       
       // Fallback avec données de base si erreur BD
-      const fallbackData = playersData.players?.slice(0, 3).map((player: any) => ({
-        id: player.id,
-        nom: player.lastName || 'Nom',
-        prenom: player.firstName || 'Prénom',
-        age: 18,
-        pays_nom: player.country || 'France',
-        photo_emoji: getRandomEmoji(),
-        club_nom: player.club?.name || 'Club de Football',
-        total_dons_recus: 0,
-        nombre_parrains: 0
-      })) || []
+      const fallbackData = playersData.players?.slice(0, 3).map((player: any) => {
+        // Calculer l'âge correctement pour le fallback aussi
+        let calculatedAge = 18
+        if (player.age) {
+          calculatedAge = player.age
+        } else if (player.dateOfBirth) {
+          const birthDate = new Date(player.dateOfBirth)
+          const today = new Date()
+          calculatedAge = today.getFullYear() - birthDate.getFullYear()
+          const monthDiff = today.getMonth() - birthDate.getMonth()
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            calculatedAge--
+          }
+        }
+        
+        return {
+          id: player.id,
+          nom: player.lastName || 'Nom',
+          prenom: player.firstName || 'Prénom',
+          age: calculatedAge,
+          pays_nom: player.country || 'France',
+          photo_emoji: getRandomEmoji(),
+          club_nom: player.club?.name || 'Club non renseigné',
+          total_dons_recus: 0,
+          nombre_parrains: 0
+        }
+      }) || []
       
       return NextResponse.json({ 
         success: true, 

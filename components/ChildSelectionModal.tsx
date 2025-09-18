@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search, MapPin, Users, Globe, ArrowLeft, ChevronDown } from 'lucide-react';
-import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 import { getOAuthConfig } from '@/lib/auth';
 import { useToastContext } from '@/components/ToastProvider';
@@ -103,33 +102,38 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const fetchChildrenByCountry = async (countryCode: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${getOAuthConfig().issuer}/api/public/players/by-country?country=${countryCode}&limit=50`);
+      const response = await fetch(`${getOAuthConfig().issuer}/api/public/players?country=${countryCode}&limit=50`);
       const result = await response.json();
       
+      console.log('Réponse API players:', result);
+      
       if (result.players && result.players.length > 0) {
-        const formattedChildren = result.players.map((player: any) => ({
-          id: player.id,
-          nom: player.lastName || 'Nom',
-          prenom: player.firstName || 'Prénom',
-          age: player.metadata?.birthDate ? 
-            new Date().getFullYear() - new Date(player.metadata.birthDate).getFullYear() : 
-            Math.floor(Math.random() * 8) + 12,
-          position: player.metadata?.position || getRandomPosition(),
-          has_license: Math.random() > 0.7,
-          photo_emoji: getRandomEmoji(),
-          club_nom: player.club?.name || getRandomClub(),
-          pays_nom: getCountryName(player.country),
-          federation_nom: player.federation?.name || 'Fédération',
-          flag_emoji: getCountryFlag(player.country),
-          email: player.email,
-          phone: player.phone_number,
-          createdAt: player.created_at,
-          isVerified: player.email_verified || false,
-          jerseyNumber: player.metadata?.jerseyNumber || Math.floor(Math.random() * 99) + 1,
-          height: player.metadata?.height || null,
-          weight: player.metadata?.weight || null,
-          status: player.metadata?.status || 'active'
-        }));
+        const formattedChildren = result.players.map((player: any) => {
+          console.log('Player data:', player);
+          return {
+            id: player.id,
+            nom: player.lastName || 'Nom',
+            prenom: player.firstName || 'Prénom',
+            age: player.age || (player.dateOfBirth ? 
+              new Date().getFullYear() - new Date(player.dateOfBirth).getFullYear() : 
+              Math.floor(Math.random() * 8) + 12),
+            position: translatePosition(player.position) || getRandomPosition(),
+            has_license: Math.random() > 0.7,
+            photo_emoji: getRandomEmoji(),
+            club_nom: player.club?.name || 'Club non renseigné',
+            pays_nom: getCountryName(player.country),
+            federation_nom: player.club?.federation || 'Fédération',
+            flag_emoji: getCountryFlag(player.country),
+            email: player.email,
+            phone: player.phone,
+            createdAt: player.createdAt,
+            isVerified: player.isVerified || false,
+            jerseyNumber: Math.floor(Math.random() * 99) + 1,
+            height: player.height ? `${player.height}cm` : null,
+            weight: player.weight ? `${player.weight}kg` : null,
+            status: player.status || 'active'
+          };
+        });
         setChildren(formattedChildren);
         setStep('child');
       } else {
@@ -155,13 +159,17 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
     return positions[Math.floor(Math.random() * positions.length)];
   };
 
-  const getRandomClub = () => {
-    const clubs = [
-      'Academy Lions', 'Future Stars FC', 'Young Eagles', 'Rising Phoenix',
-      'Golden Boot Academy', 'Dream Team FC', 'Champions Academy', 'Victory United'
-    ];
-    return clubs[Math.floor(Math.random() * clubs.length)];
+  const translatePosition = (position: string) => {
+    const translations: { [key: string]: string } = {
+      'goalkeeper': 'Gardien',
+      'defender': 'Défenseur', 
+      'midfielder': 'Milieu',
+      'forward': 'Attaquant'
+    };
+    return translations[position] || position;
   };
+
+
 
   const getPositionIcon = (position: string) => {
     const icons: { [key: string]: string } = {
@@ -377,13 +385,9 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <Link 
-                            href={`/player/${child.id}`}
-                            className="font-bold text-base text-gray-900 hover:text-[#4FBA73] transition-colors truncate"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <span className="font-bold text-base text-gray-900 truncate">
                             {child.prenom} {child.nom}
-                          </Link>
+                          </span>
                           <span className="text-sm font-bold text-[#4FBA73] bg-[#4FBA73]/10 px-2 py-1 rounded-md ml-2">
                             #{child.jerseyNumber}
                           </span>

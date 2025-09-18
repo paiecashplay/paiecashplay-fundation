@@ -7,6 +7,7 @@ import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import MediaUploader from '@/components/MediaUploader';
 import ProfilePictureUpload from '@/components/ProfilePictureUpload';
+import CountrySelector from '@/components/CountrySelector';
 import { useToastContext } from '@/components/ToastProvider';
 
 interface PlayerProfile {
@@ -18,29 +19,128 @@ interface PlayerProfile {
   country: string;
   phone?: string;
   isVerified: boolean;
+  isActive?: boolean;
   createdAt: string;
-  metadata?: {
-    position?: string;
-    height?: string;
-    weight?: string;
-    birthDate?: string;
-    jerseyNumber?: number;
-    bio?: string;
+  updatedAt?: string;
+  language?: string;
+  
+  // Informations sportives
+  position?: string;
+  dateOfBirth?: string;
+  age?: number;
+  status?: string;
+  preferredFoot?: string;
+  jerseyNumber?: number;
+  nationality?: string;
+  placeOfBirth?: string;
+  height?: number;
+  weight?: number;
+  
+  // Expérience
+  experience?: string;
+  previousClubs?: Array<{
+    name: string;
+    period: string;
+    position: string;
     achievements?: string[];
-    socialMedia?: {
-      instagram?: string;
-      twitter?: string;
-      facebook?: string;
+  }>;
+  achievements?: Array<{
+    title: string;
+    year: number;
+    organization: string;
+  }>;
+  
+  // Informations médicales
+  injuries?: Array<{
+    type: string;
+    date: string;
+    status: string;
+    duration: string;
+  }>;
+  medicalInfo?: {
+    bloodType?: string;
+    allergies?: string[];
+    medications?: string[];
+    lastCheckup?: string;
+  };
+  
+  // Contact d'urgence
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+    email?: string;
+  };
+  
+  // Éducation
+  education?: {
+    level: string;
+    institution: string;
+    field: string;
+    graduationYear?: number;
+  };
+  
+  // Préférences
+  preferences?: {
+    communicationLanguage?: string;
+    notifications?: {
+      email?: boolean;
+      sms?: boolean;
+      push?: boolean;
+    };
+    privacy?: {
+      showPhone?: boolean;
+      showEmail?: boolean;
+      showStats?: boolean;
     };
   };
+  
+  // Notes
+  notes?: string;
+  
+  // Club
   club?: {
     id: string;
     name: string;
+    country?: string;
+    federation?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    address?: {
+      street: string;
+      city: string;
+      postalCode: string;
+      country: string;
+    };
+    foundedYear?: number;
+    description?: string;
+    isVerified?: boolean;
   };
-  federation?: {
-    id: string;
-    name: string;
+  
+  // Statistiques
+  statistics?: {
+    season: string;
+    matches: number;
+    goals: number;
+    assists: number;
+    yellowCards: number;
+    redCards: number;
+    minutesPlayed: number;
+    rating: number;
   };
+  
+  // Statut contractuel
+  contractStatus?: string;
+  
+  // Métadonnées
+  metadata?: {
+    customFields?: any;
+    internalNotes?: string;
+    lastUpdatedBy?: string;
+  };
+  
+  // Stats locales
   stats?: {
     totalLicenses: number;
     activeLicenses: number;
@@ -85,6 +185,7 @@ export default function PlayerProfilePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'licenses' | 'media'>('overview');
+  const [saving, setSaving] = useState(false);
   const { toast } = useToastContext();
 
   useEffect(() => {
@@ -168,13 +269,15 @@ export default function PlayerProfilePage() {
         setMedia(mediaData);
       }
 
-      // Fetch clubs list (seulement si peut éditer)
-      if (canEdit) {
-        const clubsResponse = await fetch('/api/club');
+      // Fetch clubs list depuis l'API OAuth publique
+      try {
+        const clubsResponse = await fetch('/api/clubs/list');
         if (clubsResponse.ok) {
           const clubsData = await clubsResponse.json();
           setClubs(clubsData.clubs || []);
         }
+      } catch (error) {
+        console.error('Erreur chargement clubs:', error);
       }
 
     } catch (error) {
@@ -225,26 +328,94 @@ export default function PlayerProfilePage() {
     return age;
   };
 
+  const handleEditMode = () => {
+    setEditForm({
+      ...player,
+      firstName: player?.firstName || '',
+      lastName: player?.lastName || '',
+      country: player?.country || '',
+      position: player?.position || '',
+      height: player?.height || null,
+      weight: player?.weight || null,
+      preferredFoot: player?.preferredFoot || '',
+      jerseyNumber: player?.jerseyNumber || null,
+      notes: player?.notes || '',
+      club: player?.club || null
+    });
+    setEditing(true);
+  };
+
   const handleSaveProfile = async () => {
+    if (saving) return;
+    
+    // Validation des champs requis
+    const errors = [];
+    if (!editForm.firstName?.trim()) errors.push('Le prénom est requis');
+    if (!editForm.lastName?.trim()) errors.push('Le nom est requis');
+    if (!editForm.country?.trim()) errors.push('Le pays est requis');
+    
+    if (errors.length > 0) {
+      toast.error('Champs requis manquants', errors.join(', '));
+      return;
+    }
+    
     try {
+      setSaving(true);
+      const dataToSave = {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phone: editForm.phone,
+        country: editForm.country,
+        height: editForm.height,
+        weight: editForm.weight,
+        metadata: {
+          position: editForm.position,
+          preferredFoot: editForm.preferredFoot,
+          jerseyNumber: editForm.jerseyNumber,
+          notes: editForm.notes,
+          club: editForm.club?.name || editForm.club
+        }
+      };
+      
       const response = await fetch(`/api/players/${playerId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(dataToSave)
       });
       
       if (response.ok) {
         const result = await response.json();
-        setPlayer(editForm);
+        // Mettre à jour le player avec les nouvelles données
+        setPlayer(prev => prev ? { 
+          ...prev, 
+          firstName: editForm.firstName,
+          lastName: editForm.lastName,
+          country: editForm.country,
+          position: editForm.position,
+          height: editForm.height,
+          weight: editForm.weight,
+          preferredFoot: editForm.preferredFoot,
+          jerseyNumber: editForm.jerseyNumber,
+          notes: editForm.notes,
+          club: editForm.club || prev.club 
+        } : null);
         setEditing(false);
         toast.success('Profil mis à jour', 'Les informations ont été sauvegardées');
+        // Recharger les données pour avoir la version complète
+        setTimeout(() => {
+          fetchPlayerData();
+        }, 1500); // Plus de temps pour la synchronisation du club
       } else {
-        throw new Error('Erreur de sauvegarde');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur de sauvegarde');
       }
     } catch (error) {
-      toast.error('Erreur', 'Impossible de sauvegarder le profil');
+      console.error('Erreur sauvegarde:', error);
+      toast.error('Erreur', error instanceof Error ? error.message : 'Impossible de sauvegarder le profil');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -343,18 +514,18 @@ export default function PlayerProfilePage() {
             <div className="flex-1">
               <div className="flex items-center space-x-4 mb-4">
                 <h1 className="text-4xl font-bold">{player.firstName} {player.lastName}</h1>
-                {player.metadata?.jerseyNumber && (
+                {(player.jerseyNumber || (canEdit && editing && editForm.jerseyNumber)) && (
                   <span className="text-3xl font-bold bg-white/20 px-4 py-2 rounded-lg">
-                    #{player.metadata.jerseyNumber}
+                    #{editing ? (editForm.jerseyNumber || player.jerseyNumber) : player.jerseyNumber}
                   </span>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-white/90">
-                {player.metadata?.position && (
+                {player.position && (
                   <div className="flex items-center space-x-2">
-                    <span className="text-xl">{getPositionIcon(player.metadata.position)}</span>
-                    <span className="capitalize">{player.metadata.position}</span>
+                    <span className="text-xl">{getPositionIcon(player.position)}</span>
+                    <span className="capitalize">{player.position}</span>
                   </div>
                 )}
                 
@@ -363,10 +534,10 @@ export default function PlayerProfilePage() {
                   <span>{player.country}</span>
                 </div>
 
-                {player.metadata?.birthDate && (
+                {player.age && (
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-5 h-5" />
-                    <span>{calculateAge(player.metadata.birthDate)} ans</span>
+                    <span>{player.age} ans</span>
                   </div>
                 )}
 
@@ -407,9 +578,14 @@ export default function PlayerProfilePage() {
                   </button>
                   <button
                     onClick={handleSaveProfile}
-                    className="bg-white text-[#4FBA73] p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                    disabled={saving}
+                    className="bg-white text-[#4FBA73] p-3 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
-                    <Save className="w-5 h-5" />
+                    {saving ? (
+                      <div className="w-5 h-5 border-2 border-[#4FBA73] border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Save className="w-5 h-5" />
+                    )}
                   </button>
                 </>
               ) : (
@@ -428,7 +604,7 @@ export default function PlayerProfilePage() {
                   </button>
                   {canEdit && (
                     <button
-                      onClick={() => setEditing(true)}
+                      onClick={handleEditMode}
                       className="bg-white/20 hover:bg-white/30 p-3 rounded-lg transition-colors"
                     >
                       <Edit3 className="w-5 h-5" />
@@ -477,13 +653,14 @@ export default function PlayerProfilePage() {
                 <h2 className="text-xl font-bold mb-4">Informations personnelles</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Prénom</label>
+                    <label className="text-sm font-medium text-gray-500">Prénom <span className="text-red-500">*</span></label>
                     {canEdit && editing ? (
                       <input
                         type="text"
                         value={editForm.firstName || ''}
                         onChange={(e) => handleInputChange('firstName', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        required
                       />
                     ) : (
                       <p className="text-lg">{player.firstName}</p>
@@ -491,13 +668,14 @@ export default function PlayerProfilePage() {
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Nom</label>
-                    {editing ? (
+                    <label className="text-sm font-medium text-gray-500">Nom <span className="text-red-500">*</span></label>
+                    {canEdit && editing ? (
                       <input
                         type="text"
                         value={editForm.lastName || ''}
                         onChange={(e) => handleInputChange('lastName', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        required
                       />
                     ) : (
                       <p className="text-lg">{player.lastName}</p>
@@ -505,11 +683,28 @@ export default function PlayerProfilePage() {
                   </div>
 
                   <div>
+                    <label className="text-sm font-medium text-gray-500">Numéro de maillot</label>
+                    {canEdit && editing ? (
+                      <input
+                        type="number"
+                        value={editForm.jerseyNumber || ''}
+                        onChange={(e) => handleInputChange('jerseyNumber', parseInt(e.target.value) || null)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        placeholder="Ex: 10"
+                      />
+                    ) : (
+                      <p className="text-lg font-bold text-[#4FBA73]">
+                        {player.jerseyNumber ? `#${player.jerseyNumber}` : 'Non défini'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="text-sm font-medium text-gray-500">Position</label>
-                    {editing ? (
+                    {canEdit && editing ? (
                       <select
-                        value={editForm.metadata?.position || ''}
-                        onChange={(e) => handleInputChange('metadata.position', e.target.value)}
+                        value={editForm.position || ''}
+                        onChange={(e) => handleInputChange('position', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
                       >
                         <option value="">Sélectionner</option>
@@ -520,73 +715,121 @@ export default function PlayerProfilePage() {
                       </select>
                     ) : (
                       <p className="text-lg flex items-center space-x-2">
-                        <span>{getPositionIcon(player.metadata?.position)}</span>
-                        <span>{player.metadata?.position || 'Non défini'}</span>
+                        <span>{getPositionIcon(player.position)}</span>
+                        <span className="capitalize">{player.position || 'Non défini'}</span>
                       </p>
                     )}
                   </div>
 
                   <div>
+                    <label className="text-sm font-medium text-gray-500">Âge</label>
+                    <p className="text-lg">{player.age || 'Non renseigné'} ans</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Statut</label>
+                    <p className="text-lg">
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        player.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {player.status || 'Actif'}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Pied fort</label>
+                    {canEdit && editing ? (
+                      <select
+                        value={editForm.preferredFoot || ''}
+                        onChange={(e) => handleInputChange('preferredFoot', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                      >
+                        <option value="">Sélectionner</option>
+                        <option value="left">Gauche</option>
+                        <option value="right">Droit</option>
+                        <option value="both">Les deux</option>
+                      </select>
+                    ) : (
+                      <p className="text-lg capitalize">{player.preferredFoot || 'Non défini'}</p>
+                    )}
+                  </div>
+
+                  {player.nationality && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Nationalité</label>
+                      <p className="text-lg">{player.nationality}</p>
+                    </div>
+                  )}
+
+                  {player.placeOfBirth && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Lieu de naissance</label>
+                      <p className="text-lg">{player.placeOfBirth}</p>
+                    </div>
+                  )}
+
+                  <div>
                     <label className="text-sm font-medium text-gray-500">Club</label>
-                    {editing ? (
+                    {canEdit && editing ? (
                       <select
                         value={editForm.club?.id || ''}
                         onChange={(e) => {
                           const selectedClub = clubs.find(club => club.id === e.target.value)
-                          handleInputChange('club', selectedClub || { id: '', name: '' })
+                          handleInputChange('club', selectedClub || null)
                         }}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
                       >
-                        <option value="">Sélectionner un club</option>
+                        <option value="">Aucun club</option>
                         {clubs.map((club) => (
                           <option key={club.id} value={club.id}>
-                            {club.name}
+                            {club.name} ({club.country})
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <p className="text-lg">{player.club?.name}</p>
+                      <p className="text-lg">{player.club?.name || 'Aucun club'}</p>
                     )}
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-gray-500">Taille</label>
-                    {editing ? (
+                    {canEdit && editing ? (
                       <input
-                        type="text"
-                        value={editForm.metadata?.height || ''}
-                        onChange={(e) => handleInputChange('metadata.height', e.target.value)}
-                        placeholder="Ex: 175cm"
+                        type="number"
+                        step="0.1"
+                        value={editForm.height || ''}
+                        onChange={(e) => handleInputChange('height', parseFloat(e.target.value) || null)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        placeholder="Ex: 175"
                       />
                     ) : (
-                      <p className="text-lg">{player.metadata?.height || 'Non renseigné'}</p>
+                      <p className="text-lg">{player.height ? `${player.height} cm` : 'Non renseigné'}</p>
                     )}
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-gray-500">Poids</label>
-                    {editing ? (
+                    {canEdit && editing ? (
                       <input
-                        type="text"
-                        value={editForm.metadata?.weight || ''}
-                        onChange={(e) => handleInputChange('metadata.weight', e.target.value)}
-                        placeholder="Ex: 70kg"
+                        type="number"
+                        step="0.1"
+                        value={editForm.weight || ''}
+                        onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || null)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        placeholder="Ex: 70"
                       />
                     ) : (
-                      <p className="text-lg">{player.metadata?.weight || 'Non renseigné'}</p>
+                      <p className="text-lg">{player.weight ? `${player.weight} kg` : 'Non renseigné'}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Pays</label>
-                    {editing ? (
-                      <input
-                        type="text"
+                    <label className="text-sm font-medium text-gray-500">Pays <span className="text-red-500">*</span></label>
+                    {canEdit && editing ? (
+                      <CountrySelector
                         value={editForm.country || ''}
-                        onChange={(e) => handleInputChange('country', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
+                        onChange={(country) => handleInputChange('country', country)}
                       />
                     ) : (
                       <p className="text-lg flex items-center space-x-2">
@@ -596,19 +839,19 @@ export default function PlayerProfilePage() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Fédération</label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        value={editForm.federation?.name || ''}
-                        onChange={(e) => handleInputChange('federation.name', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
-                      />
-                    ) : (
-                      <p className="text-lg">{player.federation?.name}</p>
-                    )}
-                  </div>
+                  {player.experience && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Niveau d'expérience</label>
+                      <p className="text-lg capitalize">{player.experience}</p>
+                    </div>
+                  )}
+
+                  {player.contractStatus && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Statut contractuel</label>
+                      <p className="text-lg capitalize">{player.contractStatus}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -616,36 +859,174 @@ export default function PlayerProfilePage() {
                 <h2 className="text-xl font-bold mb-4">Biographie</h2>
                 {canEdit && editing ? (
                   <textarea
-                    value={editForm.metadata?.bio || ''}
-                    onChange={(e) => handleInputChange('metadata.bio', e.target.value)}
+                    value={editForm.notes || ''}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
                     rows={4}
                     placeholder="Décrivez votre parcours, vos objectifs..."
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
                   />
                 ) : (
                   <p className="text-gray-700 leading-relaxed">
-                    {player.metadata?.bio || 'Aucune biographie disponible'}
+                    {player.notes || 'Aucune biographie disponible'}
                   </p>
                 )}
               </div>
 
-              {player.metadata?.achievements && player.metadata.achievements.length > 0 && (
+              {/* Réalisations */}
+              {player.achievements && player.achievements.length > 0 && (
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4">Réalisations</h2>
-                  <ul className="space-y-2">
-                    {player.metadata.achievements.map((achievement, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <Trophy className="w-4 h-4 text-[#4FBA73]" />
-                        <span>{achievement}</span>
-                      </li>
+                  <div className="space-y-4">
+                    {player.achievements.map((achievement, index) => (
+                      <div key={index} className="border-l-4 border-[#4FBA73] pl-4">
+                        <h3 className="font-semibold text-lg">{achievement.title}</h3>
+                        <p className="text-gray-600">{achievement.organization} - {achievement.year}</p>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Clubs précédents */}
+              {player.previousClubs && player.previousClubs.length > 0 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4">Expérience</h2>
+                  <div className="space-y-4">
+                    {player.previousClubs.map((club, index) => (
+                      <div key={index} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-lg">{club.name}</h3>
+                          <span className="text-sm text-gray-500">{club.period}</span>
+                        </div>
+                        <p className="text-gray-600 mb-2">Position: {club.position}</p>
+                        {club.achievements && club.achievements.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 mb-1">Réalisations:</p>
+                            <ul className="text-sm text-gray-600">
+                              {club.achievements.map((achievement, i) => (
+                                <li key={i} className="flex items-center space-x-1">
+                                  <span className="w-1 h-1 bg-[#4FBA73] rounded-full"></span>
+                                  <span>{achievement}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Statistiques */}
+              {player.statistics && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4">Statistiques {player.statistics.season}</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{player.statistics.matches}</div>
+                      <div className="text-sm text-gray-600">Matchs</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{player.statistics.goals}</div>
+                      <div className="text-sm text-gray-600">Buts</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{player.statistics.assists}</div>
+                      <div className="text-sm text-gray-600">Passes d.</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{player.statistics.rating}</div>
+                      <div className="text-sm text-gray-600">Note moy.</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-500">{player.statistics.yellowCards}</div>
+                      <div className="text-sm text-gray-600">Cartons J.</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-500">{player.statistics.redCards}</div>
+                      <div className="text-sm text-gray-600">Cartons R.</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{Math.round(player.statistics.minutesPlayed / 90)}</div>
+                      <div className="text-sm text-gray-600">Matchs complets</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-[#4FBA73]">{player.statistics.minutesPlayed}</div>
+                      <div className="text-sm text-gray-600">Minutes</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Informations du club */}
+              {player.club && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Club actuel</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-lg">{player.club.name}</p>
+                      {player.club.country && (
+                        <p className="text-sm text-gray-600 flex items-center space-x-1">
+                          <span>{getCountryFlag(player.club.country)}</span>
+                          <span>{player.club.country}</span>
+                        </p>
+                      )}
+                    </div>
+                    {player.club.federation && (
+                      <p className="text-sm text-gray-600">{player.club.federation}</p>
+                    )}
+                    {player.club.foundedYear && (
+                      <p className="text-sm text-gray-600">Fondé en {player.club.foundedYear}</p>
+                    )}
+                    {player.club.website && (
+                      <a 
+                        href={player.club.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[#4FBA73] hover:underline text-sm"
+                      >
+                        Site web du club
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Éducation */}
+              {player.education && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Éducation</h3>
+                  <div className="space-y-2">
+                    <p className="font-medium">{player.education.institution}</p>
+                    <p className="text-sm text-gray-600">{player.education.field}</p>
+                    <p className="text-sm text-gray-600">Niveau: {player.education.level}</p>
+                    {player.education.graduationYear && (
+                      <p className="text-sm text-gray-600">Diplômé en {player.education.graduationYear}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact d'urgence */}
+              {player.emergencyContact && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Contact d'urgence</h3>
+                  <div className="space-y-2">
+                    <p className="font-medium">{player.emergencyContact.name}</p>
+                    <p className="text-sm text-gray-600 capitalize">{player.emergencyContact.relationship}</p>
+                    {player.emergencyContact.phone && (
+                      <p className="text-sm text-gray-600">{player.emergencyContact.phone}</p>
+                    )}
+                    {player.emergencyContact.email && (
+                      <p className="text-sm text-gray-600">{player.emergencyContact.email}</p>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* Dernières licences */}
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <h3 className="text-lg font-bold mb-4">Dernières licences</h3>
@@ -677,15 +1058,40 @@ export default function PlayerProfilePage() {
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h3 className="text-lg font-bold mb-4">Contact</h3>
                   <div className="space-y-2">
-                    {player.email && (
+                    {player.email && player.preferences?.privacy?.showEmail !== false && (
                       <p className="text-sm">
                         <span className="font-medium">Email:</span> {player.email}
                       </p>
                     )}
-                    {player.phone && (
+                    {player.phone && player.preferences?.privacy?.showPhone !== false && (
                       <p className="text-sm">
                         <span className="font-medium">Téléphone:</span> {player.phone}
                       </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Informations médicales (si disponibles) */}
+              {player.medicalInfo && (
+                <div className="bg-white rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold mb-4">Informations médicales</h3>
+                  <div className="space-y-2 text-sm">
+                    {player.medicalInfo.bloodType && (
+                      <p><span className="font-medium">Groupe sanguin:</span> {player.medicalInfo.bloodType}</p>
+                    )}
+                    {player.medicalInfo.lastCheckup && (
+                      <p><span className="font-medium">Dernier bilan:</span> {new Date(player.medicalInfo.lastCheckup).toLocaleDateString()}</p>
+                    )}
+                    {player.medicalInfo.allergies && player.medicalInfo.allergies.length > 0 && (
+                      <div>
+                        <span className="font-medium">Allergies:</span>
+                        <ul className="ml-4 mt-1">
+                          {player.medicalInfo.allergies.map((allergy, index) => (
+                            <li key={index} className="text-gray-600">• {allergy}</li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 </div>

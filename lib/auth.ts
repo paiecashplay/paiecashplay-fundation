@@ -63,7 +63,7 @@ export function getAuthorizationUrl(state: string, forceLogin = false): string {
   params.set('response_type', 'code')
   params.set('client_id', process.env.OAUTH_CLIENT_ID!)
   params.set('redirect_uri', config.redirectUri || '')
-  params.set('scope', 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read')
+  params.set('scope', 'openid profile email clubs:read clubs:write clubs:members users:write users:read players:read players:write')
   params.set('state', state)
   
   if (forceLogin) {
