@@ -99,7 +99,9 @@ export default function Home() {
         {/* <UserProfiles /> */}
 
         {/* Donation Packs Section */}
-        <DonationPacks ref={donationPacksRef} />
+        <div id="donation-packs">
+          <DonationPacks ref={donationPacksRef} />
+        </div>
 
         {/* Children Supported Section */}
         <ChildrenSupported />

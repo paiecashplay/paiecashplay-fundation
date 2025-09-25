@@ -1,4 +1,4 @@
-import { getOAuthConfig,getCurrentUser } from '@/lib/auth';
+import { getOAuthConfig } from '@/lib/auth';
 
 class PaieCashAuthAPI {
   constructor(private baseUrl: string, private accessToken?: string) {}
@@ -49,11 +49,10 @@ export async function markUserAsDonor(userId: string, donorData: {
   totalDonated: number
   preferredCauses?: string[]
   donorSince?: string
-}, toast?: any) {
-  const user = await getCurrentUser()
+}, user: any, toast?: any) {
   if (!user?.access_token) {
-    const error = 'Non authentifié'
-    toast?.error('Erreur d\'authentification', error)
+    const error = 'Token d\'accès manquant'
+    console.log('Token d\'accès manquant, impossible de marquer comme donateur')
     throw new Error(error)
   }
 

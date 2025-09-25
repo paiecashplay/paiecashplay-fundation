@@ -88,7 +88,7 @@ const DonationPacks = forwardRef<DonationPacksRef, {}>((_, ref) => {
   return (
     <>
       <section id="donation-packs" className="mb-16">
-        <h3 className="text-3xl font-bold text-center mb-4">5 Packs de Micro-Sponsoring</h3>
+        <h3 className="text-3xl font-bold text-center mb-4">Packs de Micro-Sponsoring</h3>
         <p className="text-lg text-gray-600 text-center mb-12">
           Choisissez comment vous voulez soutenir les enfants africains
         </p>

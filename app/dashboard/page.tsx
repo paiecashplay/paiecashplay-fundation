@@ -198,7 +198,17 @@ export default function Dashboard() {
                 className="w-12 h-12"
               />
               <div>
-                <h1 className="text-3xl font-bold text-white">Dashboard Club</h1>
+                <div className="flex items-center space-x-4">
+                  <h1 className="text-3xl font-bold text-white">Dashboard Club</h1>
+                  <Button 
+                    onClick={() => router.push('/')}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                  >
+                    Accueil
+                  </Button>
+                </div>
                 <p className="text-green-100 mt-1 text-lg">Gérez votre équipe et suivez vos performances</p>
               </div>
             </div>

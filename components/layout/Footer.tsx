@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaFacebook,
   FaTwitter,
@@ -11,11 +11,60 @@ import {
   FaTimes,
 } from 'react-icons/fa';
 
+interface DonationPack {
+  id: string;
+  nom: string;
+  code: string;
+  prix: number;
+}
+
 export default function Footer() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [donationPacks, setDonationPacks] = useState<DonationPack[]>([]);
+
+  useEffect(() => {
+    fetchDonationPacks();
+  }, []);
+
+  const fetchDonationPacks = async () => {
+    try {
+      const response = await fetch('/api/donations');
+      const result = await response.json();
+      
+      if (result.success) {
+        setDonationPacks(result.data || []);
+      } else {
+        // Fallback avec des packs par défaut
+        setDonationPacks([
+          { id: '1', nom: 'License Solidaire', code: 'LS', prix: 25 },
+          { id: '2', nom: 'Champion Equipment', code: 'CE', prix: 50 },
+          { id: '3', nom: 'Daily Energy', code: 'DE', prix: 15 },
+          { id: '4', nom: 'Talent Journey', code: 'TJ', prix: 75 },
+          { id: '5', nom: "Tomorrow's Training", code: 'TT', prix: 100 }
+        ]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement packs:', error);
+      // Fallback avec des packs par défaut
+      setDonationPacks([
+        { id: '1', nom: 'License Solidaire', code: 'LS', prix: 25 },
+        { id: '2', nom: 'Champion Equipment', code: 'CE', prix: 50 },
+        { id: '3', nom: 'Daily Energy', code: 'DE', prix: 15 },
+        { id: '4', nom: 'Talent Journey', code: 'TJ', prix: 75 },
+        { id: '5', nom: "Tomorrow's Training", code: 'TT', prix: 100 }
+      ]);
+    }
+  };
 
   const toggleAI = () => {
     setAiModalOpen(!aiModalOpen);
+  };
+
+  const scrollToDonationPacks = () => {
+    const donationSection = document.getElementById('donation-packs');
+    if (donationSection) {
+      donationSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -44,34 +93,34 @@ export default function Footer() {
             <div>
               <h4 className="font-bold text-lg mb-4">Packs de Dons</h4>
               <ul className="space-y-2 text-gray-400">
-                {[
-                  'License Solidaire',
-                  'Champion Equipment',
-                  'Daily Energy',
-                  'Talent Journey',
-                  "Tomorrow's Training",
-                ].map((item, idx) => (
-                  <li key={idx}>
-                    <a href="#" className="hover:text-[#4FBA73] transition-colors">{item}</a>
-                  </li>
-                ))}
+                {donationPacks.length > 0 ? (
+                  donationPacks.map((pack) => (
+                    <li key={pack.id}>
+                      <button 
+                        onClick={scrollToDonationPacks}
+                        className="hover:text-[#4FBA73] transition-colors text-left"
+                      >
+                        {pack.nom}
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500">Chargement des packs...</li>
+                )}
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-lg mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
-                {[
-                  'Comment Donner',
-                  "Rapports d'Impact",
-                  'Reçus Fiscaux',
-                  'Nous Contacter',
-                  'FAQ',
-                ].map((item, idx) => (
-                  <li key={idx}>
-                    <a href="#" className="hover:text-[#4FBA73] transition-colors">{item}</a>
-                  </li>
-                ))}
+                <li>
+                  <button 
+                    onClick={scrollToDonationPacks}
+                    className="hover:text-[#4FBA73] transition-colors text-left"
+                  >
+                    Comment Donner
+                  </button>
+                </li>
               </ul>
             </div>
 
@@ -95,7 +144,7 @@ export default function Footer() {
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <p className="text-gray-400">
-              © 2024 PaieCashPlay. Tous droits réservés. | Propulsé par PaieCashPlay & FFM
+              © 2025 PaieCashPlay. Tous droits réservés. | Propulsé par PaieCashPlay & FFM
             </p>
           </div>
         </div>

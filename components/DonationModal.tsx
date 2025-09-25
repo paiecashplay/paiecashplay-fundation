@@ -99,15 +99,16 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
     setIsProcessing(true);
     
     try {
-      // Si utilisateur connecté et pas encore donateur, le marquer comme donateur
-      if (user && !isAnonymous) {
+      // Si utilisateur connecté et pas anonyme, le marquer comme donateur
+      if (user && !isAnonymous && user.access_token) {
         try {
           await markUserAsDonor(user.sub, {
             totalDonated: pack.prix,
             preferredCauses: ['youth_development']
-          }, toast);
+          }, user, toast);
         } catch (error) {
           console.log('Utilisateur déjà donateur ou erreur:', error);
+          // Ne pas bloquer le paiement si cette étape échoue
         }
       }
 
@@ -134,10 +135,14 @@ export default function DonationModal({ isOpen, onClose, pack }: DonationModalPr
         }),
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la session de paiement');
+      }
+      
       const { sessionId } = await response.json();
       
       if (stripe && sessionId) {
-        toast.info('Redirection vers le paiement', 'Vous allez être redirigé vers Stripe');
         const { error } = await stripe.redirectToCheckout({ sessionId });
         if (error) {
           toast.error('Erreur de paiement', error.message || 'Erreur lors de la redirection');

@@ -44,9 +44,17 @@ export async function GET(request: NextRequest) {
     // Supprimer le state cookie
     cookieStore.delete('oauth-state')
     
-    // Rediriger vers la page d'accueil en utilisant APP_URL
+    // Redirection selon le type d'utilisateur
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || new URL('/', request.url).origin
-    return NextResponse.redirect(new URL('/', appUrl))
+    let redirectPath = '/'
+    
+    if (user.user_type === 'club') {
+      redirectPath = '/dashboard'
+    } else if (user.user_type === 'player') {
+      redirectPath = `/player/${user.sub}`
+    }
+    
+    return NextResponse.redirect(new URL(redirectPath, appUrl))
     
   } catch (error) {
     console.error('OAuth callback error:', error)
