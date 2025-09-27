@@ -73,11 +73,12 @@ export default function Footer() {
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-[#4FBA73] rounded-full flex items-center justify-center">
-                  <span className="font-bold">P</span>
-                </div>
-                <span className="text-xl font-bold">PaieCashPlay</span>
+              <div className="mb-4">
+                <img
+                  src="/logo-nobg.svg"
+                  alt="PaieCashPlay Logo"
+                  className="w-32 object-contain"
+                />
               </div>
               <p className="text-gray-400 mb-4">
                 Soutenir les enfants africains à travers le football - un don à la fois.

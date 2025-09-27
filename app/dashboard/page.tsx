@@ -191,11 +191,11 @@ export default function Dashboard() {
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-6">
               <Image
-                src="/logo.png"
+                src="/logo-nobg.svg"
                 alt="PaieCash Logo"
-                width={48}
-                height={48}
-                className="w-12 h-12"
+                width={120}
+                height={120}
+                className="w-30"
               />
               <div>
                 <div className="flex items-center space-x-4">

@@ -30,19 +30,15 @@ export function Header() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           {/* Logo + Titre */}
-          <Link href="/" className="flex items-center space-x-3 md:space-x-4 hover:opacity-80 transition-opacity">
+          <Link href="/" className="hover:opacity-80 transition-opacity">
             <Image
-              src="/logo.png"
+              src="/logo-nobg.svg"
               alt="PaieCashPlay Logo"
-              width={48}
-              height={48}
-              className="w-12 h-12 object-contain"
+              width={160}
+              height={160}
+              className="w-40 object-contain"
               priority
             />
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold">PaieCashPlay</h1>
-              <p className="text-blue-100 text-xs md:text-sm">Sport Solidaire</p>
-            </div>
           </Link>
 
           {/* Mobile Menu Button */}
