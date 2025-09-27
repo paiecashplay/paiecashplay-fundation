@@ -20,9 +20,7 @@ export async function POST(request: NextRequest) {
       donorId
     } = await request.json();
 
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.NEXTAUTH_URL
-      : 'http://localhost:3001';
+    const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
