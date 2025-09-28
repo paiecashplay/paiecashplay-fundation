@@ -102,39 +102,14 @@ export default function ChildSelectionModal({ isOpen, onClose, onSelectChild, pa
   const fetchChildrenByCountry = async (countryCode: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${getOAuthConfig().issuer}/api/public/players?country=${countryCode}&limit=50`);
+      const response = await fetch(`/api/enfants/selection?country=${countryCode}&limit=50`);
       const result = await response.json();
       
       console.log('Réponse API players:', result);
       
-      if (result.players && result.players.length > 0) {
-        const formattedChildren = result.players.map((player: any) => {
-          console.log('Player data:', player);
-          return {
-            id: player.id,
-            nom: player.lastName || 'Nom',
-            prenom: player.firstName || 'Prénom',
-            age: player.age || (player.dateOfBirth ? 
-              new Date().getFullYear() - new Date(player.dateOfBirth).getFullYear() : 
-              Math.floor(Math.random() * 8) + 12),
-            position: translatePosition(player.position) || getRandomPosition(),
-            has_license: Math.random() > 0.7,
-            photo_emoji: getRandomEmoji(),
-            club_nom: player.club?.name || 'Club non renseigné',
-            pays_nom: getCountryName(player.country),
-            federation_nom: player.club?.federation || 'Fédération',
-            flag_emoji: getCountryFlag(player.country),
-            email: player.email,
-            phone: player.phone,
-            createdAt: player.createdAt,
-            isVerified: player.isVerified || false,
-            jerseyNumber: Math.floor(Math.random() * 99) + 1,
-            height: player.height ? `${player.height}cm` : null,
-            weight: player.weight ? `${player.weight}kg` : null,
-            status: player.status || 'active'
-          };
-        });
-        setChildren(formattedChildren);
+      if (result.success && result.players && result.players.length > 0) {
+        // Les données sont déjà formatées et triées par l'API
+        setChildren(result.players);
         setStep('child');
       } else {
         toast.warning('Aucun enfant', `Aucun enfant trouvé dans ce pays`);

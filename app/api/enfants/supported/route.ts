@@ -25,9 +25,9 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     try {
-      // Transformer les données avec les vraies données de donations
-      const supportedChildren = await Promise.all(
-        playersData.players?.slice(0, 3).map(async (player: any) => {
+      // Récupérer tous les joueurs avec leurs données de donations
+      const allPlayersWithDonations = await Promise.all(
+        playersData.players?.map(async (player: any) => {
           console.log('Player data:', {
             id: player.id,
             age: player.age,
@@ -51,14 +51,33 @@ export async function GET() {
           
           console.log('Calculated age:', calculatedAge)
           
-          // Récupérer les licences du joueur
-          const licences = await prisma.licence.findMany({
-            where: { joueur_oauth_id: player.id },
-            include: { pack: true }
+          // Trouver le joueur local par oauth_id
+          const localJoueur = await prisma.joueur.findUnique({
+            where: { oauth_id: player.id }
           })
           
-          const totalDons = licences.reduce((sum, licence) => 
-            sum + Number(licence.montant_paye), 0
+          let donations: any[] = []
+          let parrains: any[] = []
+          
+          if (localJoueur) {
+            // Récupérer les donations du joueur
+            donations = await prisma.donation.findMany({
+              where: { 
+                joueur_id: localJoueur.id,
+                statut: 'completed'
+              }
+            })
+            
+            // Récupérer le nombre de parrains uniques
+            parrains = await prisma.parrain.findMany({
+              where: {
+                joueur_id: localJoueur.id
+              }
+            })
+          }
+          
+          const totalDons = donations.reduce((sum, donation) => 
+            sum + Number(donation.montant), 0
           )
           
           return {
@@ -70,16 +89,21 @@ export async function GET() {
             photo_emoji: getRandomEmoji(),
             club_nom: player.club?.name || 'Club non renseigné',
             total_dons_recus: totalDons,
-            nombre_parrains: licences.length
+            nombre_parrains: parrains.length
           }
         }) || []
       )
+      
+      // Trier par total des dons reçus (du plus grand au plus petit) pour "Visages de l'Avenir"
+      const sortedChildren = allPlayersWithDonations
+        .sort((a, b) => b.total_dons_recus - a.total_dons_recus)
+        .slice(0, 3)
       
       await prisma.$disconnect()
       
       return NextResponse.json({ 
         success: true, 
-        data: supportedChildren 
+        data: sortedChildren 
       })
     } catch (dbError) {
       console.error('Erreur BD:', dbError)

@@ -33,18 +33,23 @@ model Licence {
   id                String      @id @default(cuid())
   numero_licence    String      @unique
   joueur_oauth_id   String
+  joueur_nom        String      @db.VarChar(100)
+  joueur_prenom     String      @db.VarChar(100)
   club_oauth_id     String
+  club_nom          String      @db.VarChar(100)
   pack_donation_id  String
   date_emission     DateTime    @default(now())
   date_expiration   DateTime
   statut            String      @default("active") @db.VarChar(20)
   montant_paye      Decimal     @db.Decimal(10, 2)
   devise            String      @default("EUR") @db.VarChar(3)
+  saison            String      @db.VarChar(20) // Ex: "2024-2025"
   created_at        DateTime    @default(now())
   updated_at        DateTime    @updatedAt
   
   pack              PackDonation @relation(fields: [pack_donation_id], references: [id])
 
+  @@unique([joueur_oauth_id, club_oauth_id, saison])
   @@map("licences")
 }
 
@@ -54,14 +59,21 @@ model Donation {
   type_recurrence   String    @default("unique") @db.VarChar(20)
   statut            String    @default("pending") @db.VarChar(20)
   stripe_session_id String?   @unique
+  stripe_payment_id String?   @unique
   donateur_id       String?
+  donateur_email    String?   @db.VarChar(255)
+  donateur_nom      String?   @db.VarChar(100)
   joueur_id         Int
   pack_nom          String    @db.VarChar(100)
   is_anonymous      Boolean   @default(false)
+  parrain_id        String?
   date_creation     DateTime  @default(now())
+  date_paiement     DateTime?
   updated_at        DateTime  @updatedAt
 
-  joueur            Joueur    @relation(fields: [joueur_id], references: [id])
+  joueur            Joueur              @relation(fields: [joueur_id], references: [id])
+  parrain           Parrain?            @relation(fields: [parrain_id], references: [id])
+  notifications     NotificationEmail[]
 
   @@map("donations")
 }
@@ -90,15 +102,59 @@ model Joueur {
   age               Int?
   position          String?     @db.VarChar(30)
   club_nom          String?     @db.VarChar(100)
+  club_oauth_id     String?     // ID OAuth du club actuel
   pays_nom          String?     @db.VarChar(50)
   photo_emoji       String?     @db.VarChar(10)
   total_dons_recus  Decimal     @default(0) @db.Decimal(10, 2)
   nombre_donateurs  Int         @default(0)
+  is_licensed       Boolean     @default(false) // A une licence active
+  current_license_id String?    // ID de la licence actuelle
   created_at        DateTime    @default(now())
   updated_at        DateTime    @updatedAt
 
   donations         Donation[]
+  parrains          Parrain[]
 
   @@unique([prenom, nom], name: "prenom_nom")
   @@map("joueurs")
+}
+
+model Parrain {
+  id                String    @id @default(cuid())
+  donateur_id       String
+  donateur_email    String    @db.VarChar(255)
+  donateur_nom      String?   @db.VarChar(100)
+  joueur_id         Int
+  total_donne       Decimal   @default(0) @db.Decimal(10, 2)
+  nombre_dons       Int       @default(0)
+  date_premier_don  DateTime  @default(now())
+  date_dernier_don  DateTime  @default(now())
+  is_anonymous      Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  joueur            Joueur    @relation(fields: [joueur_id], references: [id])
+  donations         Donation[]
+
+  @@unique([donateur_id, joueur_id])
+  @@map("parrains")
+}
+
+model NotificationEmail {
+  id            String    @id @default(cuid())
+  type          String    @db.VarChar(50) // 'donation_thank_you', 'donation_received'
+  destinataire  String    @db.VarChar(255)
+  sujet         String    @db.VarChar(255)
+  contenu       String    @db.Text
+  donation_id   String?
+  statut        String    @default("pending") @db.VarChar(20) // 'pending', 'sent', 'failed'
+  tentatives    Int       @default(0)
+  erreur        String?   @db.Text
+  envoye_le     DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  donation      Donation? @relation(fields: [donation_id], references: [id])
+
+  @@map("notifications_email")
 }

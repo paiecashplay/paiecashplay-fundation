@@ -43,14 +43,14 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: isRecurring ? 'subscription' : 'payment',
-      success_url: `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?cancelled=true`,
       metadata: {
         donationType,
         packName,
         childId: childId?.toString() || '',
-        childName,
-        isAnonymous: isAnonymous.toString(),
+        childName: childName || '',
+        isAnonymous: (isAnonymous ?? true).toString(),
         donorId: donorId || '',
       },
     };

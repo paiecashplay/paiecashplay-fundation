@@ -6,71 +6,84 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     try {
-      // Statistiques depuis la BD locale
+      // Statistiques réelles depuis la table Donation
       const [
-        totalLicences,
+        totalDonations,
         totalMontant,
         packStats,
-        recentLicences
+        recentDonations,
+        totalLicences
       ] = await Promise.all([
-        // Total des licences
-        prisma.licence.count(),
+        // Total des donations complétées
+        prisma.donation.count({
+          where: { statut: 'completed' }
+        }),
         
-        // Montant total des donations
-        prisma.licence.aggregate({
+        // Montant total des donations complétées
+        prisma.donation.aggregate({
+          where: { statut: 'completed' },
           _sum: {
-            montant_paye: true
+            montant: true
           }
         }),
         
-        // Statistiques par pack
-        prisma.licence.groupBy({
-          by: ['pack_donation_id'],
+        // Statistiques par pack de donation
+        prisma.donation.groupBy({
+          where: { statut: 'completed' },
+          by: ['pack_nom'],
           _count: {
             id: true
           },
           _sum: {
-            montant_paye: true
+            montant: true
           }
         }),
         
-        // Licences récentes
-        prisma.licence.findMany({
+        // Donations récentes
+        prisma.donation.findMany({
+          where: { statut: 'completed' },
           take: 5,
           orderBy: {
-            created_at: 'desc'
+            date_paiement: 'desc'
           },
           include: {
-            pack: true
+            joueur: true
           }
+        }),
+        
+        // Total des licences actives
+        prisma.licence.count({
+          where: { statut: 'active' }
         })
       ])
 
-      // Récupérer le nombre de joueurs uniques
-      const joueursUniques = await prisma.licence.findMany({
+      // Récupérer le nombre de joueurs uniques ayant reçu des donations
+      const joueursUniques = await prisma.donation.findMany({
+        where: { statut: 'completed' },
         select: {
-          joueur_oauth_id: true
+          joueur_id: true
         },
-        distinct: ['joueur_oauth_id']
+        distinct: ['joueur_id']
       })
 
       const stats = {
         total_joueurs_soutenus: joueursUniques.length,
         total_licences: totalLicences,
-        total_donations: Number(totalMontant._sum.montant_paye || 0),
-        moyenne_par_licence: totalLicences > 0 ? 
-          Number(totalMontant._sum.montant_paye || 0) / totalLicences : 0,
+        total_donations: Number(totalMontant._sum.montant || 0),
+        moyenne_par_licence: totalDonations > 0 ? 
+          Number(totalMontant._sum.montant || 0) / totalDonations : 0,
         packs_populaires: packStats.map(pack => ({
-          pack_id: pack.pack_donation_id,
-          nombre_licences: pack._count.id,
-          montant_total: Number(pack._sum.montant_paye || 0)
+          pack_nom: pack.pack_nom,
+          nombre_donations: pack._count.id,
+          montant_total: Number(pack._sum.montant || 0)
         })),
-        licences_recentes: recentLicences.map(licence => ({
-          id: licence.id,
-          joueur_id: licence.joueur_oauth_id,
-          pack_nom: licence.pack.nom,
-          montant: Number(licence.montant_paye),
-          date: licence.created_at
+        donations_recentes: recentDonations.map(donation => ({
+          id: donation.id,
+          joueur_nom: `${donation.joueur.prenom} ${donation.joueur.nom}`,
+          pack_nom: donation.pack_nom,
+          montant: Number(donation.montant),
+          date: donation.date_paiement,
+          is_anonymous: donation.is_anonymous
         }))
       }
 
@@ -93,7 +106,7 @@ export async function GET() {
           total_donations: 0,
           moyenne_par_licence: 0,
           packs_populaires: [],
-          licences_recentes: []
+          donations_recentes: []
         }
       })
     }

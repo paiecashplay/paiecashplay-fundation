@@ -30,6 +30,15 @@ export async function createLicence(data: {
     throw new Error('Non authentifié')
   }
 
+  // Récupérer les informations du joueur depuis l'API OAuth
+  const { getOAuthConfig } = await import('@/lib/auth')
+  const playerResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players/${data.joueur_oauth_id}`)
+  const playerData = await playerResponse.json()
+  
+  // Récupérer les informations du club depuis l'API OAuth
+  const clubResponse = await fetch(`${getOAuthConfig().issuer}/api/public/clubs/${user.sub}`)
+  const clubData = await clubResponse.json()
+
   // Générer un numéro de licence unique
   const numero_licence = `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
   
@@ -37,16 +46,24 @@ export async function createLicence(data: {
   const duree = data.duree_mois || 12
   const date_expiration = new Date()
   date_expiration.setMonth(date_expiration.getMonth() + duree)
+  
+  // Générer la saison actuelle
+  const currentYear = new Date().getFullYear()
+  const saison = `${currentYear}-${currentYear + 1}`
 
   const licence = await prisma.licence.create({
     data: {
       numero_licence,
       joueur_oauth_id: data.joueur_oauth_id,
-      club_oauth_id: user.sub, // ID du club connecté
+      joueur_nom: playerData.lastName || 'Nom',
+      joueur_prenom: playerData.firstName || 'Prénom',
+      club_oauth_id: user.sub,
+      club_nom: clubData.name || 'Club',
       pack_donation_id: data.pack_donation_id,
       date_expiration,
       montant_paye: data.montant_paye,
-      statut: 'active'
+      statut: 'active',
+      saison
     },
     include: {
       pack: {

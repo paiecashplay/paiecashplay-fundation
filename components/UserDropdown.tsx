@@ -102,6 +102,16 @@ export default function UserDropdown() {
               </Link>
             )}
 
+            {/* Dashboard Donateur pour tous les utilisateurs ayant fait des dons */}
+            <Link
+              href="/donations"
+              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              onClick={() => setIsOpen(false)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Mes Donations
+            </Link>
+
             {isAdmin && (
               <Link
                 href="/admin"

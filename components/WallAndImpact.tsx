@@ -12,6 +12,19 @@ interface DashboardStats {
   total_licences: number;
   total_donations: number;
   moyenne_par_licence: number;
+  packs_populaires: Array<{
+    pack_nom: string;
+    nombre_donations: number;
+    montant_total: number;
+  }>;
+  donations_recentes: Array<{
+    id: string;
+    joueur_nom: string;
+    pack_nom: string;
+    montant: number;
+    date: string;
+    is_anonymous: boolean;
+  }>;
 }
 
 interface TopDonor {
@@ -129,18 +142,24 @@ export default function WallAndImpact({ donationPacksRef }: WallAndImpactProps) 
     if (donationChartRef.current) {
       const ctx = donationChartRef.current.getContext('2d');
       if (!ctx) return;
+      
+      // Utiliser les vraies données des packs ou des données par défaut
+      const packData = data.packs_populaires && data.packs_populaires.length > 0 
+        ? data.packs_populaires.slice(0, 5)
+        : [
+            { pack_nom: 'License Solidaire', nombre_donations: 35 },
+            { pack_nom: 'Champion Equipment', nombre_donations: 25 },
+            { pack_nom: 'Daily Energy', nombre_donations: 20 },
+            { pack_nom: 'Talent Journey', nombre_donations: 12 },
+            { pack_nom: 'Tomorrow\'s Training', nombre_donations: 8 }
+          ];
+      
       new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: [
-            'License Solidaire',
-            'Champion Equipment',
-            'Daily Energy',
-            'Talent Journey',
-            'Tomorrow\'s Training'
-          ],
+          labels: packData.map(pack => pack.pack_nom),
           datasets: [{
-            data: [35, 25, 20, 12, 8],
+            data: packData.map(pack => pack.nombre_donations),
             backgroundColor: [
               '#3b82f6',
               '#ea580c',
@@ -350,7 +369,7 @@ export default function WallAndImpact({ donationPacksRef }: WallAndImpactProps) 
             </div>
             <div className="bg-white p-6 rounded-xl shadow-lg">
               <div className="text-3xl font-bold text-yellow-600">€{Math.round(stats.moyenne_par_licence)}</div>
-              <div className="text-gray-600">Moyenne/Licence</div>
+              <div className="text-gray-600">Moyenne/Don</div>
             </div>
           </div>
         )}

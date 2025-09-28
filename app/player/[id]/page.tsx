@@ -156,6 +156,10 @@ interface License {
   statut: string;
   montant_paye: number;
   devise: string;
+  saison: string;
+  club_nom: string;
+  joueur_prenom: string;
+  joueur_nom: string;
   pack: {
     nom: string;
     code: string;
@@ -259,7 +263,7 @@ export default function PlayerProfilePage() {
       const licensesResponse = await fetch(`/api/players/${playerId}/licenses`);
       if (licensesResponse.ok) {
         const licensesData = await licensesResponse.json();
-        setLicenses(licensesData);
+        setLicenses(licensesData.licenses || []);
       }
 
       // Fetch player media
@@ -1030,26 +1034,43 @@ export default function PlayerProfilePage() {
               {/* Dernières licences */}
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <h3 className="text-lg font-bold mb-4">Dernières licences</h3>
-                {licenses.slice(0, 3).map((license) => (
-                  <div key={license.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                    <div>
-                      <p className="font-medium">{license.pack.nom}</p>
-                      <p className="text-sm text-gray-500">{new Date(license.date_emission).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {license.statut}
-                    </span>
-                  </div>
-                ))}
-                {licenses.length > 3 && (
-                  <button
-                    onClick={() => setActiveTab('licenses')}
-                    className="w-full mt-4 text-[#4FBA73] hover:underline text-sm"
-                  >
-                    Voir toutes les licences
-                  </button>
+                {licenses.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Aucune licence</p>
+                ) : (
+                  <>
+                    {licenses.slice(0, 3).map((license) => (
+                      <div key={license.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <div>
+                          <p className="font-medium">{license.pack.nom}</p>
+                          <p className="text-sm text-gray-500">
+                            {license.saison} • {new Date(license.date_emission).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {license.statut}
+                          </span>
+                          <button
+                            onClick={() => window.open(`/api/licenses/${license.id}/pdf`, '_blank')}
+                            className="text-[#4FBA73] hover:text-[#3da562] p-1"
+                            title="Télécharger la licence"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {licenses.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('licenses')}
+                        className="w-full mt-4 text-[#4FBA73] hover:underline text-sm"
+                      >
+                        Voir toutes les licences
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1104,37 +1125,64 @@ export default function PlayerProfilePage() {
           <div className="bg-white rounded-xl shadow-sm">
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">Historique des licences</h2>
+              <p className="text-gray-600 mt-1">Toutes les licences par club et saison</p>
             </div>
             <div className="p-6">
               {licenses.length === 0 ? (
                 <div className="text-center py-12">
                   <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">Aucune licence trouvée</p>
+                  <p className="text-sm text-gray-400 mt-2">Les licences apparaissent lorsque le joueur rejoint un club</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {licenses.map((license) => (
-                    <div key={license.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-bold text-lg">{license.pack.nom}</h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {license.statut}
-                        </span>
+                    <div key={license.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-lg text-[#4FBA73]">{license.pack.nom}</h3>
+                          <p className="text-gray-600">{license.club_nom}</p>
+                          <p className="text-sm text-gray-500">Saison {license.saison}</p>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            license.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {license.statut}
+                          </span>
+                          <button
+                            onClick={() => window.open(`/api/licenses/${license.id}/pdf`, '_blank')}
+                            className="bg-[#4FBA73] text-white px-4 py-2 rounded-lg hover:bg-[#3da562] transition-colors flex items-center space-x-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>Télécharger</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                        <div>
-                          <span className="font-medium">Numéro:</span> {license.numero_licence}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Numéro de licence</p>
+                          <p className="font-mono font-bold text-[#4FBA73]">{license.numero_licence}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Émission:</span> {new Date(license.date_emission).toLocaleDateString()}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Émission</p>
+                          <p className="font-medium">{new Date(license.date_emission).toLocaleDateString('fr-FR')}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Expiration:</span> {new Date(license.date_expiration).toLocaleDateString()}
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Expiration</p>
+                          <p className="font-medium">{new Date(license.date_expiration).toLocaleDateString('fr-FR')}</p>
                         </div>
-                        <div>
-                          <span className="font-medium">Montant:</span> {license.montant_paye}€
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Montant payé</p>
+                          <p className="font-bold text-[#4FBA73]">{license.montant_paye}€</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <span>Joueur: {license.joueur_prenom} {license.joueur_nom}</span>
+                          <span>Valide pour: {license.club_nom}</span>
                         </div>
                       </div>
                     </div>

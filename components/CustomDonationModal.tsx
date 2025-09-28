@@ -1,7 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Check, CreditCard, Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Check, CreditCard, Heart, User } from 'lucide-react';
+import ChildSelectionModal from './ChildSelectionModal';
+import AuthChoiceModal from './AuthChoiceModal';
+import { useAuth } from '@/hooks/useAuth';
+import { markUserAsDonor } from '@/lib/services/donorService';
+import { useToastContext } from '@/components/ToastProvider';
+import { useDonationState } from '@/hooks/useDonationState';
 
 interface CustomDonationModalProps {
   isOpen: boolean;
@@ -12,16 +18,88 @@ interface CustomDonationModalProps {
 
 export default function CustomDonationModal({ isOpen, onClose, amount, donationType }: CustomDonationModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [step, setStep] = useState<'child' | 'auth' | 'payment'>('child');
+  const [selectedChild, setSelectedChild] = useState<any>(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const { user, login } = useAuth();
+  const { toast } = useToastContext();
+  const { saveDonationState, clearDonationState } = useDonationState();
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep('child');
+      setSelectedChild(null);
+      setIsAnonymous(false);
+    }
+  }, [isOpen]);
+
+  // Restaurer l'état sauvegardé si l'utilisateur est connecté
+  useEffect(() => {
+    if (isOpen && user && !selectedChild) {
+      const savedState = localStorage.getItem('pending_donation_state');
+      if (savedState) {
+        try {
+          const parsedState = JSON.parse(savedState);
+          if (parsedState.selectedChild) {
+            setSelectedChild(parsedState.selectedChild);
+            setStep('payment');
+            localStorage.removeItem('pending_donation_state');
+          }
+        } catch (error) {
+          console.error('Erreur restauration état:', error);
+          localStorage.removeItem('pending_donation_state');
+        }
+      }
+    }
+  }, [isOpen, user, selectedChild]);
 
   if (!isOpen || !amount || Number(amount) <= 0) return null;
 
   const numericAmount = Number(amount);
   const isRecurring = donationType !== 'Don unique';
 
+  const handleChildSelection = (child: any) => {
+    setSelectedChild(child);
+    if (user) {
+      setStep('payment');
+    } else {
+      setStep('auth');
+    }
+  };
+
+  const handleLogin = async () => {
+    if (selectedChild) {
+      saveDonationState({
+        pack: { nom: 'Don personnalisé', prix: numericAmount, type_recurrence: donationType },
+        selectedChild,
+        step: 'payment'
+      });
+      toast.info('Don en attente', 'Votre don sera repris après connexion');
+    }
+    await login();
+  };
+
+  const handleAnonymous = () => {
+    setIsAnonymous(true);
+    setStep('payment');
+  };
+
   const handlePayment = async () => {
     setIsProcessing(true);
     
     try {
+      // Si utilisateur connecté et pas anonyme, le marquer comme donateur
+      if (user && !isAnonymous && user.access_token) {
+        try {
+          await markUserAsDonor(user.sub, {
+            totalDonated: numericAmount,
+            preferredCauses: ['youth_development']
+          }, user, toast);
+        } catch (error) {
+          console.log('Utilisateur déjà donateur ou erreur:', error);
+        }
+      }
+
       const { getStripe } = await import('@/lib/stripe');
       const stripe = await getStripe();
       
@@ -34,24 +112,72 @@ export default function CustomDonationModal({ isOpen, onClose, amount, donationT
           amount: numericAmount,
           donationType,
           packName: 'Don personnalisé',
-          isRecurring: donationType !== 'Don unique'
+          isRecurring,
+          childId: selectedChild?.id,
+          childName: `${selectedChild?.prenom} ${selectedChild?.nom}`,
+          isAnonymous,
+          donorId: isAnonymous ? null : user?.sub
         }),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la session de paiement');
+      }
       
       const { sessionId } = await response.json();
       
       if (stripe && sessionId) {
         const { error } = await stripe.redirectToCheckout({ sessionId });
         if (error) {
+          toast.error('Erreur de paiement', error.message || 'Erreur lors de la redirection');
           console.error('Erreur Stripe:', error);
         }
+      } else {
+        toast.error('Erreur de configuration', 'Impossible d\'initialiser le paiement');
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      toast.error('Erreur lors du paiement', errorMessage);
       console.error('Erreur de paiement:', error);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleClose = () => {
+    setStep('child');
+    setSelectedChild(null);
+    setIsAnonymous(false);
+    clearDonationState();
+    onClose();
+  };
+
+  // Rendu conditionnel selon l'étape
+  if (step === 'child') {
+    return (
+      <ChildSelectionModal
+        isOpen={true}
+        onClose={handleClose}
+        onSelectChild={handleChildSelection}
+        packTitle="Don personnalisé"
+      />
+    );
+  }
+
+  if (step === 'auth') {
+    return (
+      <AuthChoiceModal
+        isOpen={true}
+        onClose={handleClose}
+        onLogin={handleLogin}
+        onAnonymous={handleAnonymous}
+        packName="Don personnalisé"
+        childName={`${selectedChild?.prenom} ${selectedChild?.nom}`}
+        amount={numericAmount}
+      />
+    );
+  }
 
   const benefits = [
     'Reçu fiscal pour déduction d\'impôts',
@@ -66,7 +192,7 @@ export default function CustomDonationModal({ isOpen, onClose, amount, donationT
         {/* Header */}
         <div className="relative p-6 border-b border-gray-100">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="w-6 h-6" />
@@ -83,6 +209,23 @@ export default function CustomDonationModal({ isOpen, onClose, amount, donationT
               </p>
             </div>
           </div>
+          
+          {/* Enfant sélectionné */}
+          {selectedChild && (
+            <div className="mt-4 p-3 bg-[#4FBA73]/10 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">{selectedChild.photo_emoji}</span>
+                <div>
+                  <p className="font-medium text-[#4FBA73]">
+                    Pour {selectedChild.prenom} {selectedChild.nom}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedChild.club_nom} • {selectedChild.pays_nom}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
