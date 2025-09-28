@@ -88,6 +88,7 @@ export async function GET() {
             pays_nom: player.country || 'France',
             photo_emoji: getRandomEmoji(),
             club_nom: player.club?.name || 'Club non renseigné',
+            has_license: !!(player.club && player.club.name && player.club.name !== 'PaiecashPlay Club'),
             total_dons_recus: totalDons,
             nombre_parrains: parrains.length
           }
@@ -133,6 +134,7 @@ export async function GET() {
           pays_nom: player.country || 'France',
           photo_emoji: getRandomEmoji(),
           club_nom: player.club?.name || 'Club non renseigné',
+          has_license: !!(player.club && player.club.name && player.club.name !== 'PaiecashPlay Club'),
           total_dons_recus: 0,
           nombre_parrains: 0
         }

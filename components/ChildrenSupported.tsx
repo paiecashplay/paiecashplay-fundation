@@ -14,6 +14,7 @@ interface ChildSupported {
   pays_nom: string;
   photo_emoji: string;
   club_nom: string;
+  has_license: boolean;
   total_dons_recus: number;
   nombre_parrains: number;
 }
