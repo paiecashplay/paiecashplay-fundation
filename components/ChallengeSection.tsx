@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import LoadingSpinner from './LoadingSpinner';
+import { useStatsStore } from '@/lib/stores/statsStore';
 
 interface ChallengeSectionProps {
   onOpenChampionModal: () => void;
@@ -16,10 +17,11 @@ interface ChallengeData {
 export default function ChallengeSection({ onOpenChampionModal }: ChallengeSectionProps) {
   const [challengeData, setChallengeData] = useState<ChallengeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { refreshTrigger } = useStatsStore();
 
   useEffect(() => {
     fetchChallengeData();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchChallengeData = async () => {
     try {

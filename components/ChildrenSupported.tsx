@@ -5,6 +5,7 @@ import { faAppleAlt, faIdCard, faTshirt } from '@fortawesome/free-solid-svg-icon
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
+import { useStatsStore } from '@/lib/stores/statsStore';
 
 interface ChildSupported {
   id: string;
@@ -23,10 +24,11 @@ export default function ChildrenSupported() {
   const [children, setChildren] = useState<ChildSupported[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { refreshTrigger } = useStatsStore();
 
   useEffect(() => {
     fetchSupportedChildren();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchSupportedChildren = async () => {
     try {
@@ -158,7 +160,7 @@ export default function ChildrenSupported() {
                     {child.total_dons_recus > 0 ? `€${child.total_dons_recus} collectés` : 'Nouveau'}
                   </span>
                   <span className={`${config.supportersColorBg} ${config.supportersColorText} px-3 py-1 rounded-full text-xs`}>
-                    {child.nombre_parrains} parrain{child.nombre_parrains > 1 ? 's' : ''}
+                    {child.nombre_parrains} parrain{child.nombre_parrains !== 1 ? 's' : ''}
                   </span>
                 </div>
                 </div>

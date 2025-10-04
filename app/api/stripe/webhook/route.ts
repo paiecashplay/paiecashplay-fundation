@@ -61,16 +61,60 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     } = session.metadata!;
 
     const montant = session.amount_total! / 100;
-    const joueurId = parseInt(childId);
+    const joueurOAuthId = childId;
     const isAnon = isAnonymous === 'true';
+    
+    // Trouver ou créer le joueur local
+    let joueur = await prisma.joueur.findUnique({
+      where: { oauth_id: joueurOAuthId }
+    });
+    
+    if (!joueur) {
+      // Créer le joueur s'il n'existe pas
+      const childNameParts = childName.split(' ');
+      joueur = await prisma.joueur.create({
+        data: {
+          oauth_id: joueurOAuthId,
+          prenom: childNameParts[0] || 'Prénom',
+          nom: childNameParts.slice(1).join(' ') || 'Nom',
+          total_dons_recus: 0,
+          nombre_donateurs: 0
+        }
+      });
+    }
+    
+    const joueurId = joueur.id;
 
-    // Récupérer les infos du donateur si connecté
+    // Récupérer les infos du donateur depuis Stripe
     let donateurEmail = null;
     let donateurNom = null;
     
-    if (!isAnon && donorId && session.customer_details?.email) {
-      donateurEmail = session.customer_details.email;
-      donateurNom = session.customer_details.name || null;
+    console.log('Session details:', {
+      customer_details: session.customer_details,
+      customer_email: session.customer_email,
+      customer: session.customer,
+      isAnon,
+      donorId,
+      metadata: session.metadata
+    });
+    
+    // Essayer plusieurs sources pour l'email
+    if (!isAnon) {
+      donateurEmail = session.customer_details?.email || session.customer_email || null;
+      donateurNom = session.customer_details?.name || null;
+      
+      // Si on a un customer ID, récupérer les infos depuis Stripe
+      if (session.customer && typeof session.customer === 'string') {
+        try {
+          const customer = await stripe.customers.retrieve(session.customer);
+          if (customer && !customer.deleted) {
+            donateurEmail = donateurEmail || customer.email;
+            donateurNom = donateurNom || customer.name;
+          }
+        } catch (error) {
+          console.error('Error retrieving customer:', error);
+        }
+      }
     }
 
     // Gérer le parrainage
@@ -104,30 +148,52 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
     }
 
     // Créer la donation
+    const donationData = {
+      montant,
+      type_recurrence: donationType,
+      statut: 'completed',
+      stripe_session_id: session.id,
+      stripe_payment_id: session.payment_intent as string,
+      donateur_id: isAnon ? null : donorId,
+      donateur_email: donateurEmail,
+      donateur_nom: donateurNom,
+      joueur_id: joueurId,
+      pack_nom: packName,
+      is_anonymous: isAnon,
+      parrain_id: parrainId,
+      date_paiement: new Date()
+    };
+    
+    console.log('Creating donation with data:', donationData);
+    console.log('Parrain data:', {
+      parrainId,
+      donateurEmail,
+      donateurNom,
+      isAnon,
+      donorId
+    });
+    
     const donation = await prisma.donation.create({
-      data: {
-        montant,
-        type_recurrence: donationType,
-        statut: 'completed',
-        stripe_session_id: session.id,
-        stripe_payment_id: session.payment_intent as string,
-        donateur_id: isAnon ? null : donorId,
-        donateur_email: donateurEmail,
-        donateur_nom: donateurNom,
-        joueur_id: joueurId,
-        pack_nom: packName,
-        is_anonymous: isAnon,
-        parrain_id: parrainId,
-        date_paiement: new Date()
-      },
+      data: donationData
     });
 
     // Mettre à jour les statistiques du joueur
     await prisma.joueur.update({
       where: { id: joueurId },
       data: {
-        total_dons_recus: { increment: montant },
-        nombre_donateurs: { increment: 1 }
+        total_dons_recus: { increment: montant }
+      }
+    });
+    
+    // Recalculer le nombre exact de donateurs uniques
+    const nombreDonateurUniques = await prisma.parrain.count({
+      where: { joueur_id: joueurId }
+    });
+    
+    await prisma.joueur.update({
+      where: { id: joueurId },
+      data: {
+        nombre_donateurs: nombreDonateurUniques
       }
     });
 

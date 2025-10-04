@@ -7,21 +7,15 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     try {
-      // Récupérer les top donateurs depuis la BD locale
-      const topDonors = await prisma.licence.groupBy({
-        by: ['joueur_oauth_id'],
-        _sum: {
-          montant_paye: true
-        },
-        _count: {
-          id: true
-        },
+      // Récupérer les top donateurs depuis la table Parrain
+      const topDonors = await prisma.parrain.findMany({
         orderBy: {
-          _sum: {
-            montant_paye: 'desc'
-          }
+          total_donne: 'desc'
         },
-        take: 10
+        take: 10,
+        include: {
+          joueur: true
+        }
       })
 
       // Récupérer les infos enrichies des donateurs
@@ -40,8 +34,8 @@ export async function GET() {
             })
             
             // Calculer les statistiques
-            const totalDons = Number(donor._sum.montant_paye || 0)
-            const moyenneDon = totalDons / donor._count.id
+            const totalDons = Number(donor.total_donne)
+            const moyenneDon = totalDons / donor.nombre_dons
             const packPreference = getPreferredPack(donations)
             const anciennete = getAnciennete(donations[donations.length - 1]?.created_at)
             const dernierDon = donations[0]?.created_at
@@ -49,12 +43,12 @@ export async function GET() {
             const badges = getBadges(donations, totalDons, moyenneDon, isRecent)
             
             return {
-              id: donor.joueur_oauth_id,
-              nom: player?.lastName || 'Nom',
-              prenom: player?.firstName || 'Prénom',
-              pays: player?.country || 'FR',
+              id: donor.donateur_id,
+              nom: donor.donateur_nom?.split(' ').slice(1).join(' ') || 'Nom',
+              prenom: donor.donateur_nom?.split(' ')[0] || 'Prénom',
+              pays: 'FR',
               total_dons: totalDons,
-              nombre_donations: donor._count.id,
+              nombre_donations: donor.nombre_dons,
               moyenne_don: moyenneDon,
               pack_prefere: packPreference,
               anciennete_jours: anciennete,
@@ -113,8 +107,9 @@ function getRandomEmoji(): string {
 }
 
 function getPreferredPack(donations: any[]) {
+  if (!donations.length) return null
   const packCounts = donations.reduce((acc, donation) => {
-    const packName = donation.pack.nom
+    const packName = donation.pack_nom
     acc[packName] = (acc[packName] || 0) + 1
     return acc
   }, {})

@@ -22,6 +22,16 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
+    console.log('Creating checkout session with:', {
+      amount,
+      donationType,
+      packName,
+      childId,
+      childName,
+      isAnonymous,
+      donorId
+    });
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       line_items: [
@@ -45,9 +55,11 @@ export async function POST(request: NextRequest) {
       mode: isRecurring ? 'subscription' : 'payment',
       success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?cancelled=true`,
+      customer_creation: 'always',
+      billing_address_collection: 'auto',
       metadata: {
-        donationType,
-        packName,
+        donationType: donationType || '',
+        packName: packName || '',
         childId: childId?.toString() || '',
         childName: childName || '',
         isAnonymous: (isAnonymous ?? true).toString(),

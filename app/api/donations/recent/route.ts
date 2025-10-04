@@ -7,8 +7,8 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     try {
-      // Récupérer les 3 dernières licences avec les infos du pack
-      const recentDonations = await prisma.licence.findMany({
+      // Récupérer les 3 dernières donations avec les infos du pack
+      const recentDonations = await prisma.donation.findMany({
         take: 3,
         orderBy: {
           created_at: 'desc'
@@ -24,7 +24,7 @@ export async function GET() {
           try {
             const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
             const playersData = await oauthResponse.json()
-            const player = playersData.players?.find((p: any) => p.id === donation.joueur_oauth_id)
+            const player = playersData.players?.find((p: any) => p.id === donation.joueur_id)
             
             // Calculer le temps écoulé
             const timeAgo = getTimeAgo(donation.created_at)
@@ -32,11 +32,11 @@ export async function GET() {
             return {
               id: donation.id,
               title: `${donation.pack.nom} pour ${player?.firstName || 'Joueur'} ${player?.lastName || 'Inconnu'}`,
-              description: `Montant: €${donation.montant_paye} - ${donation.pack.description}`,
+              description: `Montant: €${donation.montant} - ${donation.pack.description}`,
               thanks: `Merci ${player?.firstName || 'Donateur'} !`,
               timeAgo,
               pack_code: donation.pack.code,
-              amount: Number(donation.montant_paye),
+              amount: Number(donation.montant),
               player_name: `${player?.firstName || 'Joueur'} ${player?.lastName || 'Inconnu'}`,
               player_country: player?.country || 'FR'
             }
@@ -45,11 +45,11 @@ export async function GET() {
             return {
               id: donation.id,
               title: `${donation.pack.nom} pour un joueur`,
-              description: `Montant: €${donation.montant_paye} - ${donation.pack.description}`,
+              description: `Montant: €${donation.montant} - ${donation.pack.description}`,
               thanks: 'Merci Donateur !',
               timeAgo,
               pack_code: donation.pack.code,
-              amount: Number(donation.montant_paye),
+              amount: Number(donation.montant),
               player_name: 'Joueur Inconnu',
               player_country: 'FR'
             }

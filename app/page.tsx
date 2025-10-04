@@ -14,6 +14,7 @@ import RecentUpdatesAndSocial from '../components/RecentUpdatesAndSocial';
 import CallToAction from '../components/CallToAction';
 import Footer from '@/components/layout/Footer';
 import DonationResume from '../components/DonationResume';
+import StatsRefresher from '../components/StatsRefresher';
 
 
 
@@ -125,6 +126,9 @@ export default function Home() {
     
     {/* Composant pour reprendre le don après connexion */}
     <DonationResume />
+    
+    {/* Composant pour rafraîchir les statistiques */}
+    <StatsRefresher />
     </>
   );
 }

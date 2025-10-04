@@ -43,6 +43,8 @@ export default function SuccessPage() {
       if (response.ok) {
         const data = await response.json();
         setDonationInfo(data);
+        // Déclencher la mise à jour des statistiques
+        window.dispatchEvent(new CustomEvent('donation-completed'));
       }
     } catch (err) {
       console.error('Erreur:', err);

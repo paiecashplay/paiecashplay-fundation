@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faBus, faIdCard, faTshirt, faAppleAlt, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
 import LoadingSpinner from './LoadingSpinner';
+import { useStatsStore } from '@/lib/stores/statsStore';
 
 interface RecentDonation {
   id: string;
@@ -22,11 +23,12 @@ interface RecentDonation {
 export default function RecentUpdatesAndSocial() {
   const [recentDonations, setRecentDonations] = useState<RecentDonation[]>([]);
   const [loading, setLoading] = useState(true);
+  const { refreshTrigger } = useStatsStore();
 
 
   useEffect(() => {
     fetchRecentDonations();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchRecentDonations = async () => {
     try {

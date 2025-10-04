@@ -25,12 +25,12 @@ export async function GET() {
         })
       }
 
-      // Compter les licences du pack Champion Equipment ce mois-ci
+      // Compter les donations du pack Champion Equipment ce mois-ci
       const startOfMonth = new Date()
       startOfMonth.setDate(1)
       startOfMonth.setHours(0, 0, 0, 0)
 
-      const currentMonthLicences = await prisma.licence.count({
+      const currentMonthDonations = await prisma.donation.count({
         where: {
           pack_donation_id: championPack.id,
           created_at: {
@@ -44,7 +44,7 @@ export async function GET() {
       return NextResponse.json({
         success: true,
         data: {
-          current: currentMonthLicences,
+          current: currentMonthDonations,
           goal: 100,
           pack_name: championPack.nom
         }

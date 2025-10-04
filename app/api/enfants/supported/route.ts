@@ -56,29 +56,16 @@ export async function GET() {
             where: { oauth_id: player.id }
           })
           
-          let donations: any[] = []
-          let parrains: any[] = []
+          let totalDons = 0
+          let nombreParrains = 0
           
           if (localJoueur) {
-            // Récupérer les donations du joueur
-            donations = await prisma.donation.findMany({
-              where: { 
-                joueur_id: localJoueur.id,
-                statut: 'completed'
-              }
-            })
-            
-            // Récupérer le nombre de parrains uniques
-            parrains = await prisma.parrain.findMany({
-              where: {
-                joueur_id: localJoueur.id
-              }
+            totalDons = Number(localJoueur.total_dons_recus)
+            // Compter les parrains uniques réels
+            nombreParrains = await prisma.parrain.count({
+              where: { joueur_id: localJoueur.id }
             })
           }
-          
-          const totalDons = donations.reduce((sum, donation) => 
-            sum + Number(donation.montant), 0
-          )
           
           return {
             id: player.id,
@@ -90,7 +77,7 @@ export async function GET() {
             club_nom: player.club?.name || 'Club non renseigné',
             has_license: !!(player.club && player.club.name && player.club.name !== 'PaiecashPlay Club'),
             total_dons_recus: totalDons,
-            nombre_parrains: parrains.length
+            nombre_parrains: nombreParrains
           }
         }) || []
       )

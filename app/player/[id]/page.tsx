@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import MediaUploader from '@/components/MediaUploader';
 import ProfilePictureUpload from '@/components/ProfilePictureUpload';
 import CountrySelector from '@/components/CountrySelector';
+import ClubSelector from '@/components/ClubSelector';
 import { useToastContext } from '@/components/ToastProvider';
 
 interface PlayerProfile {
@@ -185,10 +186,11 @@ export default function PlayerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
-  const [clubs, setClubs] = useState<any[]>([]);
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'licenses' | 'media'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'licenses' | 'sponsors' | 'media'>('overview');
+  const [sponsors, setSponsors] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToastContext();
 
@@ -273,16 +275,14 @@ export default function PlayerProfilePage() {
         setMedia(mediaData);
       }
 
-      // Fetch clubs list depuis l'API OAuth publique
-      try {
-        const clubsResponse = await fetch('/api/clubs/list');
-        if (clubsResponse.ok) {
-          const clubsData = await clubsResponse.json();
-          setClubs(clubsData.clubs || []);
-        }
-      } catch (error) {
-        console.error('Erreur chargement clubs:', error);
+      // Fetch player sponsors
+      const sponsorsResponse = await fetch(`/api/players/${playerId}/sponsors`);
+      if (sponsorsResponse.ok) {
+        const sponsorsData = await sponsorsResponse.json();
+        setSponsors(sponsorsData.data || []);
       }
+
+      // Les clubs sont maintenant chargés directement dans le ClubSelector
 
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -560,8 +560,8 @@ export default function PlayerProfilePage() {
                   <div className="text-sm text-white/80">Licences</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{player.stats?.activeLicenses || 0}</div>
-                  <div className="text-sm text-white/80">Actives</div>
+                  <div className="text-2xl font-bold">{sponsors.length}</div>
+                  <div className="text-sm text-white/80">Parrains</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold">{player.stats?.totalDonationsReceived || 0}€</div>
@@ -628,6 +628,7 @@ export default function PlayerProfilePage() {
             {[
               { id: 'overview', label: 'Aperçu', icon: Star },
               { id: 'licenses', label: 'Licences', icon: Award },
+              { id: 'sponsors', label: 'Parrains', icon: Heart },
               { id: 'media', label: 'Médias', icon: ImageIcon }
             ].map(({ id, label, icon: Icon }) => (
               <button
@@ -776,21 +777,12 @@ export default function PlayerProfilePage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Club</label>
                     {canEdit && editing ? (
-                      <select
-                        value={editForm.club?.id || ''}
-                        onChange={(e) => {
-                          const selectedClub = clubs.find(club => club.id === e.target.value)
-                          handleInputChange('club', selectedClub || null)
-                        }}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-[#4FBA73] focus:ring-1 focus:ring-[#4FBA73]"
-                      >
-                        <option value="">Aucun club</option>
-                        {clubs.map((club) => (
-                          <option key={club.id} value={club.id}>
-                            {club.name} ({club.country})
-                          </option>
-                        ))}
-                      </select>
+                      <ClubSelector
+                        value={editForm.club}
+                        onChange={(club) => handleInputChange('club', club)}
+                        placeholder="Rechercher et sélectionner un club"
+                        defaultCountry={player.country}
+                      />
                     ) : (
                       <p className="text-lg">{player.club?.name || 'Aucun club'}</p>
                     )}
@@ -1031,6 +1023,45 @@ export default function PlayerProfilePage() {
                   </div>
                 </div>
               )}
+              {/* Derniers parrains */}
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold mb-4 flex items-center">
+                  <Heart className="w-5 h-5 mr-2 text-red-500" />
+                  Derniers parrains
+                </h3>
+                {sponsors.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Aucun parrain</p>
+                ) : (
+                  <>
+                    {sponsors.slice(0, 3).map((sponsor) => (
+                      <div key={sponsor.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                        <div>
+                          <p className="font-medium">
+                            {sponsor.is_anonymous ? 'Donateur Anonyme' : (sponsor.donateur_nom || 'Donateur')}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {sponsor.total_donne}€ • {sponsor.nombre_dons} don{sponsor.nombre_dons > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-gray-500">
+                            {new Date(sponsor.date_dernier_don).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {sponsors.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('sponsors')}
+                        className="w-full mt-4 text-[#4FBA73] hover:underline text-sm"
+                      >
+                        Voir tous les parrains
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
               {/* Dernières licences */}
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <h3 className="text-lg font-bold mb-4">Dernières licences</h3>
@@ -1185,6 +1216,91 @@ export default function PlayerProfilePage() {
                           <span>Valide pour: {license.club_nom}</span>
                         </div>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'sponsors' && (
+          <div className="bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold flex items-center">
+                <Heart className="w-6 h-6 mr-3 text-red-500" />
+                Parrains et Donateurs
+              </h2>
+              <p className="text-gray-600 mt-1">Les généreux supporters qui soutiennent ce joueur</p>
+            </div>
+            <div className="p-6">
+              {sponsors.length === 0 ? (
+                <div className="text-center py-12">
+                  <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucun parrain pour le moment</p>
+                  <p className="text-sm text-gray-400 mt-2">Soyez le premier à soutenir ce joueur !</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sponsors.map((sponsor) => (
+                    <div key={sponsor.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-pink-100 rounded-full flex items-center justify-center">
+                            <Heart className="w-6 h-6 text-red-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg">
+                              {sponsor.is_anonymous ? 'Donateur Anonyme' : (sponsor.donateur_nom || 'Donateur')}
+                            </h3>
+                            {!sponsor.is_anonymous && sponsor.donateur_email && (
+                              <p className="text-gray-600 text-sm">{sponsor.donateur_email}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-[#4FBA73]">
+                            {sponsor.total_donne}€
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {sponsor.nombre_dons} don{sponsor.nombre_dons > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Premier don</p>
+                          <p className="font-medium">
+                            {new Date(sponsor.date_premier_don).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Dernier don</p>
+                          <p className="font-medium">
+                            {new Date(sponsor.date_dernier_don).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Don moyen</p>
+                          <p className="font-medium text-[#4FBA73]">
+                            {Math.round(sponsor.total_donne / sponsor.nombre_dons)}€
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {sponsor.nombre_dons > 1 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">
+                              Parrain fidèle depuis {Math.ceil((new Date().getTime() - new Date(sponsor.date_premier_don).getTime()) / (1000 * 60 * 60 * 24))} jours
+                            </span>
+                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                              ⭐ Supporter régulier
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

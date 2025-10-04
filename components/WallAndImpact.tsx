@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ChampionModal from './ChampionModal';
 import { Trophy, Star, Flame, Award, Crown } from 'lucide-react';
 import type { DonationPacksRef } from './DonationPack';
+import { useStatsStore } from '@/lib/stores/statsStore';
 
 interface DashboardStats {
   total_joueurs_soutenus: number;
@@ -56,6 +57,7 @@ export default function WallAndImpact({ donationPacksRef }: WallAndImpactProps) 
   const [error, setError] = useState<string | null>(null);
   const [selectedChampion, setSelectedChampion] = useState<TopDonor | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { refreshTrigger } = useStatsStore();
 
   useEffect(() => {
     fetchData();
@@ -67,7 +69,7 @@ export default function WallAndImpact({ donationPacksRef }: WallAndImpactProps) 
         Chart.getChart(donationChartRef.current)?.destroy();
       }
     };
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchData = async () => {
     try {
