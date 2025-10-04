@@ -32,8 +32,8 @@ export async function GET() {
 
       const currentMonthDonations = await prisma.donation.count({
         where: {
-          pack_donation_id: championPack.id,
-          created_at: {
+          pack_nom: championPack.nom,
+          date_creation: {
             gte: startOfMonth
           }
         }

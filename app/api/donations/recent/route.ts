@@ -7,14 +7,11 @@ export async function GET() {
     const prisma = new PrismaClient()
     
     try {
-      // Récupérer les 3 dernières donations avec les infos du pack
+      // Récupérer les 3 dernières donations
       const recentDonations = await prisma.donation.findMany({
         take: 3,
         orderBy: {
-          created_at: 'desc'
-        },
-        include: {
-          pack: true
+          date_creation: 'desc'
         }
       })
 
@@ -27,28 +24,28 @@ export async function GET() {
             const player = playersData.players?.find((p: any) => p.id === donation.joueur_id)
             
             // Calculer le temps écoulé
-            const timeAgo = getTimeAgo(donation.created_at)
+            const timeAgo = getTimeAgo(donation.date_creation)
             
             return {
               id: donation.id,
-              title: `${donation.pack.nom} pour ${player?.firstName || 'Joueur'} ${player?.lastName || 'Inconnu'}`,
-              description: `Montant: €${donation.montant} - ${donation.pack.description}`,
+              title: `${donation.pack_nom} pour ${player?.firstName || 'Joueur'} ${player?.lastName || 'Inconnu'}`,
+              description: `Montant: €${donation.montant} - Don généreux`,
               thanks: `Merci ${player?.firstName || 'Donateur'} !`,
               timeAgo,
-              pack_code: donation.pack.code,
+              pack_code: getPackCode(donation.pack_nom),
               amount: Number(donation.montant),
               player_name: `${player?.firstName || 'Joueur'} ${player?.lastName || 'Inconnu'}`,
               player_country: player?.country || 'FR'
             }
           } catch {
-            const timeAgo = getTimeAgo(donation.created_at)
+            const timeAgo = getTimeAgo(donation.date_creation)
             return {
               id: donation.id,
-              title: `${donation.pack.nom} pour un joueur`,
-              description: `Montant: €${donation.montant} - ${donation.pack.description}`,
+              title: `${donation.pack_nom} pour un joueur`,
+              description: `Montant: €${donation.montant} - Don généreux`,
               thanks: 'Merci Donateur !',
               timeAgo,
-              pack_code: donation.pack.code,
+              pack_code: getPackCode(donation.pack_nom),
               amount: Number(donation.montant),
               player_name: 'Joueur Inconnu',
               player_country: 'FR'
@@ -95,4 +92,15 @@ function getTimeAgo(date: Date): string {
   } else {
     return 'il y a quelques minutes'
   }
+}
+
+function getPackCode(packName: string): string {
+  const codeMap: { [key: string]: string } = {
+    'License Solidaire': 'licenseSolidaire',
+    'Champion Equipment': 'championEquipment',
+    'Daily Energy': 'dailyEnergy',
+    'Talent Journey': 'talentJourney',
+    'Tomorrow\'s Training': 'tomorrowTraining'
+  }
+  return codeMap[packName] || 'licenseSolidaire'
 }

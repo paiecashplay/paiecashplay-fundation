@@ -30,11 +30,11 @@ class SimpleCache {
 
   clear(pattern?: string): void {
     if (pattern) {
-      for (const key of this.cache.keys()) {
+      Array.from(this.cache.keys()).forEach(key => {
         if (key.includes(pattern)) {
           this.cache.delete(key);
         }
-      }
+      });
     } else {
       this.cache.clear();
     }

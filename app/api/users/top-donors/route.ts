@@ -24,21 +24,20 @@ export async function GET() {
           try {
             const oauthResponse = await fetch(`${getOAuthConfig().issuer}/api/public/players`)
             const playersData = await oauthResponse.json()
-            const player = playersData.players?.find((p: any) => p.id === donor.joueur_oauth_id)
+            const player = playersData.players?.find((p: any) => p.id === donor.joueur.oauth_id)
             
             // Récupérer les détails des donations
-            const donations = await prisma.licence.findMany({
-              where: { joueur_oauth_id: donor.joueur_oauth_id },
-              include: { pack: true },
-              orderBy: { created_at: 'desc' }
+            const donations = await prisma.donation.findMany({
+              where: { joueur_id: donor.joueur_id },
+              orderBy: { date_creation: 'desc' }
             })
             
             // Calculer les statistiques
             const totalDons = Number(donor.total_donne)
             const moyenneDon = totalDons / donor.nombre_dons
             const packPreference = getPreferredPack(donations)
-            const anciennete = getAnciennete(donations[donations.length - 1]?.created_at)
-            const dernierDon = donations[0]?.created_at
+            const anciennete = getAnciennete(donor.date_premier_don)
+            const dernierDon = donor.date_dernier_don
             const isRecent = dernierDon ? isRecentDonation(dernierDon) : false
             const badges = getBadges(donations, totalDons, moyenneDon, isRecent)
             
@@ -59,13 +58,13 @@ export async function GET() {
             }
           } catch {
             return {
-              id: donor.joueur_oauth_id,
-              nom: 'Joueur',
-              prenom: 'Inconnu',
+              id: donor.donateur_id,
+              nom: 'Donateur',
+              prenom: 'Anonyme',
               pays: 'FR',
-              total_dons: Number(donor._sum.montant_paye || 0),
-              nombre_donations: donor._count.id,
-              moyenne_don: 0,
+              total_dons: Number(donor.total_donne),
+              nombre_donations: donor.nombre_dons,
+              moyenne_don: Number(donor.total_donne) / donor.nombre_dons,
               pack_prefere: null,
               anciennete_jours: 0,
               dernier_don: null,
@@ -112,7 +111,7 @@ function getPreferredPack(donations: any[]) {
     const packName = donation.pack_nom
     acc[packName] = (acc[packName] || 0) + 1
     return acc
-  }, {})
+  }, {} as any)
   
   return Object.keys(packCounts).reduce((a, b) => 
     packCounts[a] > packCounts[b] ? a : b
