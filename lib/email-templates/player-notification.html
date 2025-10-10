@@ -1,0 +1,44 @@
+<div class="greeting">
+    Cher(e) {{playerName}},
+</div>
+
+<div class="message">
+    Nous avons le plaisir de vous informer qu'un généreux donateur {{#isAnonymous}}anonyme{{/isAnonymous}}{{^isAnonymous}}(<strong>{{donorName}}</strong>){{/isAnonymous}} vient de faire un don de <span class="amount">{{amount}}€</span> pour vous soutenir !
+</div>
+
+<div class="info-card">
+    <h3>🎁 Détails du don reçu</h3>
+    <div class="info-row">
+        <span class="info-label">Pack choisi :</span>
+        <span class="info-value">{{packName}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Montant :</span>
+        <span class="info-value amount">{{amount}}€</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Donateur :</span>
+        <span class="info-value">{{#isAnonymous}}Donateur anonyme{{/isAnonymous}}{{^isAnonymous}}{{donorName}}{{/isAnonymous}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Date :</span>
+        <span class="info-value">{{date}}</span>
+    </div>
+</div>
+
+<div class="highlight">
+    ⚽ <strong>Continuez à briller !</strong> Ce soutien vous permettra de continuer à pratiquer votre sport et développer votre talent. Donnez toujours le meilleur de vous-même !
+</div>
+
+<div class="message">
+    Votre parcours inspire et votre détermination mérite d'être soutenue. Continuez à travailler dur et à poursuivre vos rêves !
+</div>
+
+<a href="#" class="button">Voir mon profil</a>
+
+<div class="divider"></div>
+
+<div class="message">
+    <strong>Sportivement,</strong><br>
+    L'équipe PaieCashPlay
+</div>

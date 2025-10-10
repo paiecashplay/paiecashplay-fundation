@@ -1,0 +1,48 @@
+<div class="greeting">
+    Cher {{clubName}},
+</div>
+
+<div class="message">
+    Nous avons le plaisir de vous informer qu'un don de <span class="amount">{{amount}}€</span> vient d'être effectué pour soutenir <strong>{{playerName}}</strong>, membre de votre club.
+</div>
+
+<div class="info-card">
+    <h3>🏆 Détails du don pour votre club</h3>
+    <div class="info-row">
+        <span class="info-label">Joueur soutenu :</span>
+        <span class="info-value">{{playerName}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Pack choisi :</span>
+        <span class="info-value">{{packName}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Montant :</span>
+        <span class="info-value amount">{{amount}}€</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Donateur :</span>
+        <span class="info-value">{{#isAnonymous}}Donateur anonyme{{/isAnonymous}}{{^isAnonymous}}{{donorName}}{{/isAnonymous}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Date :</span>
+        <span class="info-value">{{date}}</span>
+    </div>
+</div>
+
+<div class="highlight">
+    🌟 <strong>Félicitations !</strong> Ce soutien témoigne de la confiance accordée à votre club et à vos jeunes talents. Continuez votre excellent travail de formation !
+</div>
+
+<div class="message">
+    Votre engagement dans la formation des jeunes porte ses fruits. Ce don est une reconnaissance de la qualité de votre travail et de l'avenir prometteur de vos joueurs.
+</div>
+
+<a href="#" class="button">Accéder au dashboard club</a>
+
+<div class="divider"></div>
+
+<div class="message">
+    <strong>Cordialement,</strong><br>
+    L'équipe PaieCashPlay
+</div>

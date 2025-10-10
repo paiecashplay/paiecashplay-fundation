@@ -1,0 +1,98 @@
+<div class="greeting">
+    Équipe Administrative,
+</div>
+
+<div class="message">
+    Une nouvelle donation vient d'être traitée avec succès sur la plateforme PaieCashPlay.
+</div>
+
+<div class="info-card">
+    <h3>💰 Informations financières</h3>
+    <div class="info-row">
+        <span class="info-label">ID Donation :</span>
+        <span class="info-value">{{donationId}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Montant :</span>
+        <span class="info-value amount">{{amount}}€</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Pack choisi :</span>
+        <span class="info-value">{{packName}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Type :</span>
+        <span class="info-value">{{type}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Date :</span>
+        <span class="info-value">{{date}} à {{time}}</span>
+    </div>
+</div>
+
+<div class="info-card">
+    <h3>👤 Informations du donateur</h3>
+    <div class="info-row">
+        <span class="info-label">Nom :</span>
+        <span class="info-value">{{#isAnonymous}}Don anonyme{{/isAnonymous}}{{^isAnonymous}}{{donorName}}{{/isAnonymous}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Email :</span>
+        <span class="info-value">{{#isAnonymous}}Don anonyme{{/isAnonymous}}{{^isAnonymous}}{{donorEmail}}{{/isAnonymous}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Type :</span>
+        <span class="info-value">{{#isAnonymous}}Anonyme{{/isAnonymous}}{{^isAnonymous}}Identifié{{/isAnonymous}}</span>
+    </div>
+</div>
+
+<div class="info-card">
+    <h3>⚽ Enfant bénéficiaire</h3>
+    <div class="info-row">
+        <span class="info-label">Nom :</span>
+        <span class="info-value">{{childName}}</span>
+    </div>
+    {{#clubName}}
+    <div class="info-row">
+        <span class="info-label">Club :</span>
+        <span class="info-value">{{clubName}}</span>
+    </div>
+    {{/clubName}}
+    {{#playerEmail}}
+    <div class="info-row">
+        <span class="info-label">Email joueur :</span>
+        <span class="info-value">{{playerEmail}}</span>
+    </div>
+    {{/playerEmail}}
+    {{#clubEmail}}
+    <div class="info-row">
+        <span class="info-label">Email club :</span>
+        <span class="info-value">{{clubEmail}}</span>
+    </div>
+    {{/clubEmail}}
+</div>
+
+<div class="info-card">
+    <h3>💳 Informations Stripe</h3>
+    <div class="info-row">
+        <span class="info-label">Session ID :</span>
+        <span class="info-value">{{stripeSessionId}}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Payment ID :</span>
+        <span class="info-value">{{stripePaymentId}}</span>
+    </div>
+</div>
+
+<div class="highlight">
+    💡 <strong>Statut :</strong> Cette donation a été automatiquement traitée et sauvegardée dans la base de données. Tous les emails de notification ont été envoyés aux parties concernées.
+</div>
+
+<a href="#" class="button">Voir dans le dashboard admin</a>
+
+<div class="divider"></div>
+
+<div class="message">
+    <strong>Système automatique PaieCashPlay</strong><br>
+    Notification générée le {{date}} à {{time}}
+</div>

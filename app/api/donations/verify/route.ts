@@ -41,8 +41,20 @@ export async function GET(request: NextRequest) {
       where: { joueur_id: donation.joueur_id }
     });
 
+    // Vérifications de cohérence
+    const validations = {
+      donation_exists: !!donation,
+      parrain_exists: !!donation.parrain,
+      parrain_linked: donation.parrain_id === donation.parrain?.id,
+      stats_coherent: parrainCount === (joueurStats?.nombre_donateurs || 0),
+      email_notifications: await prisma.notificationEmail.count({
+        where: { donation_id: donation.id }
+      })
+    };
+
     return NextResponse.json({
       success: true,
+      validations,
       donation: {
         id: donation.id,
         montant: Number(donation.montant),
@@ -54,7 +66,8 @@ export async function GET(request: NextRequest) {
         is_anonymous: donation.is_anonymous,
         date_paiement: donation.date_paiement,
         stripe_session_id: donation.stripe_session_id,
-        stripe_payment_id: donation.stripe_payment_id
+        stripe_payment_id: donation.stripe_payment_id,
+        parrain_id: donation.parrain_id
       },
       joueur_stats: {
         total_dons_recus: Number(joueurStats?.total_dons_recus || 0),
@@ -63,11 +76,19 @@ export async function GET(request: NextRequest) {
       },
       parrain: donation.parrain ? {
         id: donation.parrain.id,
+        donateur_id: donation.parrain.donateur_id,
         total_donne: Number(donation.parrain.total_donne),
         nombre_dons: donation.parrain.nombre_dons,
         donateur_email: donation.parrain.donateur_email,
-        donateur_nom: donation.parrain.donateur_nom
-      } : null
+        donateur_nom: donation.parrain.donateur_nom,
+        is_anonymous: donation.parrain.is_anonymous
+      } : null,
+      summary: {
+        all_checks_passed: Object.values(validations).every(v => typeof v === 'boolean' ? v : v > 0),
+        issues: Object.entries(validations)
+          .filter(([key, value]) => typeof value === 'boolean' && !value)
+          .map(([key]) => key)
+      }
     });
 
   } catch (error) {
